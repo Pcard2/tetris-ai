@@ -11,8 +11,8 @@ import torch
 import torch.nn as nn
 from tensorboardX import SummaryWriter
 
-from test.Tetris.src.deep_q_network import DeepQNetwork
-from tetris_AI import Tetris
+from deep_q_network import DeepQNetwork
+from tetris_AI import Tetris, pygame
 from collections import deque
 
 
@@ -61,6 +61,7 @@ def train(opt):
     replay_memory = deque(maxlen=opt.replay_memory_size)
     epoch = 0
     while epoch < opt.num_epochs:
+        pygame.display.update
         next_steps = env.get_next_states()
         # Exploration or exploitation
         epsilon = opt.final_epsilon + (max(opt.num_decay_epochs - epoch, 0) * (
@@ -89,9 +90,9 @@ def train(opt):
             next_state = next_state.cuda()
         replay_memory.append([state, reward, next_state, done])
         if done:
-            final_score = env.score
-            final_tetrominoes = env.tetrominoes
-            final_cleared_lines = env.cleared_lines
+            final_score = env.points
+            final_tetrominoes = env.stats["totalPieces"]
+            final_cleared_lines = env.linesCleared
             state = env.reset()
             if torch.cuda.is_available():
                 state = state.cuda()
