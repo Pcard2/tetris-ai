@@ -12,7 +12,7 @@ import torch.nn as nn
 from tensorboardX import SummaryWriter
 
 from src.deep_q_network import DeepQNetwork
-from src.tetris import Tetris
+from src.tetris import Tetris, pygame
 from collections import deque
 
 
@@ -21,7 +21,7 @@ def get_args():
         """Implementation of Deep Q Network to play Tetris""")
     parser.add_argument("--width", type=int, default=10, help="The common width for all images")
     parser.add_argument("--height", type=int, default=20, help="The common height for all images")
-    parser.add_argument("--block_size", type=int, default=30, help="Size of a block")
+    parser.add_argument("--block_size", type=int, default=15, help="Size of a block")
     parser.add_argument("--batch_size", type=int, default=512, help="The number of images per batch")
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.99)
