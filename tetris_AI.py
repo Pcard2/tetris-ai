@@ -24,7 +24,7 @@ class Tetris():
 
     #############################################################################
 
-    def __init__(self, height=20, width=10, block_size=15):
+    def __init__(self, width=10, height=20, block_size=15):
         ### CUSTOMIZE ###
         self.MOVE_SPEED = 80
         self.ROTATE_SPEED = 100
@@ -50,7 +50,7 @@ class Tetris():
         self.font = pygame.font.SysFont('confortaa', 32)
 
         
-        self.createGrid(height, width)
+        self.createGrid(width, height)
 
         self.executant = True
         self.points = 0
@@ -72,10 +72,9 @@ class Tetris():
         }
         self.movement = {"up": False, "left": False, "down": False, "right": False}
 
-        self.piece, self.xp, self.yp, self.shapeChar= self.newShape()
-        self.nextShape, self.xp, self.yp, self.nextShapeChar = self.newShape()
+        self.piece, self.shapeChar= self.newShape()
+        self.nextShape, self.nextShapeChar = self.newShape()
         self.currentRotation = 0
-        self.changePiece = False
         self.paused = False
         self.gameOver = False
         self.reward = 0
@@ -109,7 +108,7 @@ class Tetris():
             comboCount += 1
             match self.linesCleared:
                 case 1: # Single
-                    if self.shapeChar == "T" and self.collisionShape(self.grid, self.piece, self.currentRotation, self.xp, self.yp-1):
+                    if self.shapeChar == "T" and self.collisionShape(self.grid, self.piece, self.currentRotation, self.current_pos["x"], self.current_pos["y"]-1):
                         self.stats["pointsHistory"].append("T-SPIN 1-LINE") ## STAT
                         actionPoints += 800
                         self.reward = 3
@@ -118,29 +117,30 @@ class Tetris():
                         self.stats["pointsHistory"].append("1LINE") ## STAT
                         self.reward = 1
                 case 2: # Double
-                    if self.shapeChar == "T" and self.collisionShape(self.grid, self.piece, self.currentRotation, self.xp, self.yp-1):
+                    if self.shapeChar == "T" and self.collisionShape(self.grid, self.piece, self.currentRotation, self.current_pos["x"], self.current_pos["y"]-1):
                         self.stats["pointsHistory"].append("T-SPIN 2-LINES") ## STAT
                         actionPoints += 100
-                        self.reward = 6
+                        self.reward += 6
                     else:
                         self.stats["pointsHistory"].append("2LINES") ## STAT
                         actionPoints += 1200
-                        self.reward = 2
+                        self.reward += 2
                 case 3: # Triple
-                    if self.shapeChar == "T" and self.collisionShape(self.grid, self.piece, self.currentRotation, self.xp, self.yp-1):
+                    if self.shapeChar == "T" and self.collisionShape(self.grid, self.piece, self.currentRotation, self.current_pos["x"], self.current_pos["y"]-1):
                         self.stats["pointsHistory"].append("T-SPIN 3-LINES") ## STAT
                         actionPoints += 1600
-                        self.reward = 10
+                        self.reward += 10
                     else:
                         self.stats["pointsHistory"].append("3LINES") ## STAT
                         actionPoints += 500
-                        self.reward = 3
+                        self.reward += 3
                 case 4: # Tetris
                     self.stats["pointsHistory"].append("4LINES") ## STAT
                     actionPoints += 800
-                    self.reward = 8
+                    self.reward += 6
             if comboCount > 1:
                 actionPoints *= 1.5
+                self.reward += 1
         else:
             comboCount = 1
 
@@ -151,7 +151,7 @@ class Tetris():
         shape = tetrominos[shapeNum]
         shapeChar = tetrominosStr[shapeNum]
         
-        return shape, self.width//2, 0, shapeChar
+        return shape, shapeChar
 
     def drawPoints(self):
         superf_text = self.font.render("Score", True, "white")
@@ -224,17 +224,17 @@ class Tetris():
         #         if shapePiece != 0: # switch case is slower 13/5/24  https://www.andrewjmoodie.com/blog/2018/09-04-2018-matlab-speed-comparison-of-switch-case-and-if-then-statements-and-hard-code/#:~:text=It%20turns%20out%20that%20switch,then%20or%20case%2Dswitch%20statement.
         #             replacePos(grid,x+xb,y+yb,shapePiece)
 
-    def clearShape(self,x,y):
-        shape = self.piece[self.currentRotation]
+    # def clearShape(self,x,y):
+    #     shape = self.piece[self.currentRotation]
         
-        yb = -1
-        for shapeY in shape:
-            yb += 1
-            xb = -1
-            for shapePiece in shapeY:
-                xb += 1
-                if shapePiece != 0:
-                    self.replacePos(x+xb,y+yb,0)
+    #     yb = -1
+    #     for shapeY in shape:
+    #         yb += 1
+    #         xb = -1
+    #         for shapePiece in shapeY:
+    #             xb += 1
+    #             if shapePiece != 0:
+    #                 self.replacePos(x+xb,y+yb,0)
 
     def reset(self):
         for line in range(len(self.grid)):
@@ -251,16 +251,16 @@ class Tetris():
         curr_piece = [row[:] for row in self.piece]
 
         for i in range(4):
+            print(i)
             valid_xs = self.width - len(curr_piece[0])
             for x in range(valid_xs + 1):
-                piece = [row[:] for row in curr_piece]
+                piece = curr_piece[i] # i - current rotation
                 pos = {"x": x, "y": 0}
                 while not self.check_collision(piece, pos):
                     pos["y"] += 1
                 self.truncate(piece, pos)
                 grid = self.store(piece, pos)
                 states[(x, i)] = self.get_state_properties(grid)
-            curr_piece = self.rotate(curr_piece)
         return states
 
     def collisionShape(self, x, y):
@@ -283,11 +283,8 @@ class Tetris():
         return False
 
     def check_collision(self, piece, pos):
-        print(piece)
         future_y = pos["y"] + 1
         for y in range(len(piece)):
-            # print(future_y)
-            # print(y)
             for x in range(len(piece[y])):
                 if future_y + y > self.height - 1 or self.grid[future_y + y][pos["x"] + x] and piece[y][x]:
                     return True
@@ -319,6 +316,34 @@ class Tetris():
         diffs = torch.abs(currs - nexts)
         total_bumpiness = torch.sum(diffs)
         return total_bumpiness, total_height
+
+    def truncate(self, piece, pos):
+        gameover = False
+        last_collision_row = -1
+        for y in range(len(piece)):
+            for x in range(len(piece[y])):
+                if self.grid[pos["y"] + y][pos["x"] + x] and piece[y][x]:
+                    if y > last_collision_row:
+                        last_collision_row = y
+
+        if pos["y"] - (len(piece) - last_collision_row) < 0 and last_collision_row > -1:
+            while last_collision_row >= 0 and len(piece) > 1:
+                gameover = True
+                last_collision_row = -1
+                del piece[0]
+                for y in range(len(piece)):
+                    for x in range(len(piece[y])):
+                        if self.grid[pos["y"] + y][pos["x"] + x] and piece[y][x] and y > last_collision_row:
+                            last_collision_row = y
+        return gameover
+
+    def store(self, piece, pos):
+        grid = [x[:] for x in self.grid]
+        for y in range(len(piece)):
+            for x in range(len(piece[y])):
+                if piece[y][x] and not grid[y + pos["y"]][x + pos["x"]]:
+                    grid[y + pos["y"]][x + pos["x"]] = piece[y][x]
+        return grid
 
     def uploadStats(stats):
         print("[DEBUG] SAVING STATS...")
@@ -413,25 +438,12 @@ class Tetris():
         
         self.drawShape(self.xp, self.yp)
 
-        if self.changePiece:
-            self.reward = 0
-            for i in self.grid[0]:
-                if i > 0 or self.gameTime > 5000 * (self.linesCleared+1): # if game is doing nothing for a looong time
-                    self.stats["dateTime"] = datetime.now() ## STAT
-                    self.stats["points"] = self.points ## STAT
-                    self.stats["timePlayed"] = self.gameTime ## STAT
-                    # uploadStats(stats)
-                    print("[DEBUG] GAME OVER")
-                    self.reward = 0
-                    self.gameOver = True
-                    
-            self.stats["totalPieces"] += 1 ## STAT
-            self.stats["pieceHistory"].append(self.shapeChar)
-            self.piece, self.shapeChar = self.nextShape, self.nextShapeChar
-            self.nextShape, self.xp, self.yp, self.extShapeChar = self.newShape()
-            self.grid, self.linesCleared = self.clearLines()
-            self.points = self.scoring()
-            self.changePiece = False
-        
-        return self.reward, self.gameOver
-
+    def new_piece(self):
+        self.stats["totalPieces"] += 1 ## STAT
+        self.stats["pieceHistory"].append(self.shapeChar) ## STAT
+        self.piece, self.shapeChar = self.nextShape, self.nextShapeChar
+        self.nextShape, self.extShapeChar = self.newShape()
+        self.grid, self.linesCleared = self.clearLines()
+        self.points = self.scoring()
+        self.current_pos = {"x": self.width // 2 - len(self.piece[0]) // 2,
+                            "y": 0}
