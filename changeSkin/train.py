@@ -289,13 +289,13 @@ class Tetris:
         self.window.blit(superf_text, rect_text)
 
     def drawInfo(self):
-        print("Epoch: {}/{}, Action: {}, Score: {}, Tetrominoes {}, Cleared lines: {}".format(
-            epoch,
-            opt.num_epochs,
-            action,
-            final_score,
-            final_tetrominoes,
-            final_cleared_lines))
+        # print("Epoch: {}/{}, Action: {}, Score: {}, Tetrominoes {}, Cleared lines: {}".format(
+        #     epoch,
+        #     opt.num_epochs,
+        #     action,
+        #     final_score,
+        #     final_tetrominoes,
+        #     final_cleared_lines))
         superf_text = self.font.render(f"{self.clock.get_fps():.0f}", True, "black")
         rect_text = superf_text.get_rect()
         rect_text.centerx = 228
