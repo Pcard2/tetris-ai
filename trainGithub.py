@@ -84,8 +84,6 @@ def train(opt):
         next_state = next_states[index, :]
         action = next_actions[index]
 
-        print(action)
-
         reward, done = env.step(action)
         
         if torch.cuda.is_available():
