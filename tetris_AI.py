@@ -33,7 +33,7 @@ class Tetris():
 
         self.height = height
         self.width = width
-        self.block_size = block_size
+        self.size = block_size
 
         self.grid = []
 
@@ -76,7 +76,7 @@ class Tetris():
         self.nextShape, self.nextShapeChar = self.newShape()
         self.currentRotation = 0
         self.paused = False
-        self.gameOver = False
+        self.gameover = False
         self.reward = 0
         self.linesCleared = 0
     def drawGrid(self):    # for every element in the list, it creates a box with the 'size'
@@ -90,17 +90,17 @@ class Tetris():
         for line in self.grid:
             print(line)
 
-    def clearLines(self): # looks at every line in the gridand, if every space is occupied, it clears the line anc creates a new one
-        linesCleared = 0
+    def check_cleared_rows(self): # looks at every line in the gridand, if every space is occupied, it clears the line anc creates a new one
+        lines_cleared = 0
         for y in range(len(self.grid)):
             if not 0 in self.grid[y]:
                 for yReplace in range(y, 0, -1): # start:y end:0 step:-1
                     self.grid[yReplace] = self.grid[yReplace-1]
                 self.grid[0] = [0] * len(self.grid[0]) # defines first line to be clear because of a bug where pieces stretch
                 self.stats["linesCleared"] += 1 ## STAT
-                linesCleared += 1
+                lines_cleared += 1
                 
-        return self.grid, linesCleared
+        return lines_cleared, self.grid
 
     def scoring(self):
         actionPoints = 0
@@ -242,8 +242,9 @@ class Tetris():
         self.points = 0
         self.xp,self.yp = self.width//2, 0
         self.currentRotation = 0
+        self.cleared_lines = 0
+        self.gameover = False
         print("[DEBUG] RESET")
-        self.gameOver = False
         return self.get_state_properties(self.grid)
 
     def get_next_states(self):
@@ -251,10 +252,10 @@ class Tetris():
         curr_piece = [row[:] for row in self.piece]
 
         for i in range(4):
-            print(i)
             valid_xs = self.width - len(curr_piece[0])
             for x in range(valid_xs + 1):
                 piece = curr_piece[i] # i - current rotation
+                print(1)
                 pos = {"x": x, "y": 0}
                 while not self.check_collision(piece, pos):
                     pos["y"] += 1
@@ -286,6 +287,7 @@ class Tetris():
         future_y = pos["y"] + 1
         for y in range(len(piece)):
             for x in range(len(piece[y])):
+                self.printGrid()
                 if future_y + y > self.height - 1 or self.grid[future_y + y][pos["x"] + x] and piece[y][x]:
                     return True
         return False
@@ -331,6 +333,7 @@ class Tetris():
                 gameover = True
                 last_collision_row = -1
                 del piece[0]
+                print(2)
                 for y in range(len(piece)):
                     for x in range(len(piece[y])):
                         if self.grid[pos["y"] + y][pos["x"] + x] and piece[y][x] and y > last_collision_row:
@@ -379,71 +382,96 @@ class Tetris():
 
     ###################################################################
 
-    def step(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-                    
+    # def step(self):
+    #     for event in pygame.event.get():
+    #         if event.type == pygame.QUIT:
+    #             pygame.quit()
+    #             quit()
 
-        self.window.fill(self.bgColor)
-        self.drawPoints()
-        self.drawNext()
-        self.drawGrid()
-        self.drawDebug()
+    #     self.gameTime += self.clock.get_rawtime()
+    #     self.fallTime += self.clock.get_rawtime()
+    #     self.clock.tick()
 
-        self.gameTime += self.clock.get_rawtime()
-        self.fallTime += self.clock.get_rawtime()
-        self.clock.tick()
-
-        self.clearShape(self.xp, self.yp)
+    #     self.clearShape(self.xp, self.yp)
         
-        if self.fallTime > self.FALL_SPEED:
-            self.fallTime = 0
-            self.yp += 1
-            if self.collisionShape(self.xp,self.yp): # if the shape collides in the next 
-                self.changePiece = True
-                self.yp -= 1
+    #     if self.fallTime > self.FALL_SPEED:
+    #         self.fallTime = 0
+    #         self.yp += 1
+    #         if self.collisionShape(self.xp,self.yp): # if the shape collides in the next 
+    #             self.changePiece = True
+    #             self.yp -= 1
 
-        if self.movement["up"]:
-            self.stats["controlHistory"] += "W" ## CONTROL STAT
-            self.currentRotation += 1
-            if self.currentRotation > 3:
-                self.currentRotation = 0
-            while self.collisionShape(self.xp,self.yp):
-                self.currentRotation -= 1
+    #     if self.movement["up"]:
+    #         self.stats["controlHistory"] += "W" ## CONTROL STAT
+    #         self.currentRotation += 1
+    #         if self.currentRotation > 3:
+    #             self.currentRotation = 0
+    #         while self.collisionShape(self.xp,self.yp):
+    #             self.currentRotation -= 1
 
-        if self.movement['left']:
-            self.stats["controlHistory"] += "A" ## CONTROL STAT
-            self.xp -= 1
-            if self.collisionShape(self.xp, self.yp):
-                self.xp += 1
+    #     if self.movement['left']:
+    #         self.stats["controlHistory"] += "A" ## CONTROL STAT
+    #         self.xp -= 1
+    #         if self.collisionShape(self.xp, self.yp):
+    #             self.xp += 1
 
-        if self.movement['down']:
-            self.stats["controlHistory"] += "S" ## CONTROL STAT
-            self.yp += 1
-            if self.collisionShape(self.xp, self.yp): # if the shape collides in the next
-                self.changePiece = True
-                self.yp -= 1
+    #     if self.movement['down']:
+    #         self.stats["controlHistory"] += "S" ## CONTROL STAT
+    #         self.yp += 1
+    #         if self.collisionShape(self.xp, self.yp): # if the shape collides in the next
+    #             self.changePiece = True
+    #             self.yp -= 1
                     
             
-        if self.movement['right']:
-            self.stats["controlHistory"] += "D" ## CONTROL STAT
-            self.xp += 1
-            if self.collisionShape(self.xp, self.yp):
-                self.xp -= 1
-            self.movement['right'] == False
+    #     if self.movement['right']:
+    #         self.stats["controlHistory"] += "D" ## CONTROL STAT
+    #         self.xp += 1
+    #         if self.collisionShape(self.xp, self.yp):
+    #             self.xp -= 1
+    #         self.movement['right'] == False
 
         ########################################
         
-        self.drawShape(self.xp, self.yp)
+        
 
     def new_piece(self):
         self.stats["totalPieces"] += 1 ## STAT
         self.stats["pieceHistory"].append(self.shapeChar) ## STAT
         self.piece, self.shapeChar = self.nextShape, self.nextShapeChar
         self.nextShape, self.extShapeChar = self.newShape()
-        self.grid, self.linesCleared = self.clearLines()
         self.points = self.scoring()
         self.current_pos = {"x": self.width // 2 - len(self.piece[0]) // 2,
                             "y": 0}
+
+    def step(self, action):
+        pygame.display.update()
+
+        x, num_rotations = action
+        self.current_pos = {"x": x, "y": 0}
+        self.shape = self.piece[num_rotations]
+        print(3)
+
+        while not self.check_collision(self.shape, self.current_pos):
+            self.current_pos["y"] += 1
+
+        overflow = self.truncate(self.shape, self.current_pos)
+        if overflow:
+            self.gameover = True
+
+        self.grid = self.store(self.shape, self.current_pos)
+
+        lines_cleared, self.grid = self.check_cleared_rows()
+        self.cleared_lines += lines_cleared
+        if self.gameover:
+            self.reward -= 2
+        else:
+            self.new_piece()
+        
+        self.drawShape(self.xp, self.yp)
+        self.window.fill(self.bgColor)
+        self.drawPoints()
+        self.drawNext()
+        self.drawGrid()
+        self.drawDebug()
+
+        return self.reward, self.gameover
