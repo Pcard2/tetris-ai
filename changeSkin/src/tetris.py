@@ -3,18 +3,15 @@
 @author: Viet Nguyen <nhviet1009@gmail.com>
 """
 import numpy as np
-from PIL import Image
-import cv2
 from matplotlib import style
 import torch
 import random
 import pygame
+import src.shapes as shapes
+import matplotlib.pyplot as plt
+from IPython import display
 
-style.use("ggplot")
-
-
-
-
+plt.ion()
 
 class Tetris:
     piece_colors = [
@@ -67,13 +64,19 @@ class Tetris:
         pygame.init()
         self.window = pygame.display.set_mode((288, 338), pygame.SRCALPHA)
         pygame.display.set_caption("Tetris game")
-        self.clock = pygame.time.Clock()
 
         self.font = pygame.font.SysFont('confortaa', 32)
+        self.small_font = pygame.font.SysFont('confortaa', 24)
+
+        self.plot_scores = []
+        self.plot_mean_scores = []
+        self.total_cleared_lines = []
+        self.total_rewards = 0
+        
 
     def reset(self):
         self.board = [[0] * self.width for _ in range(self.height)]
-        self.score = 0
+        self.reward = 0
         self.tetrominoes = 0
         self.cleared_lines = 0
         self.bag = list(range(len(self.pieces)))
@@ -218,7 +221,7 @@ class Tetris:
             board = [[0 for _ in range(self.width)]] + board
         return board
 
-    def step(self, action, render=True):
+    def step(self, action, epoch):
         x, num_rotations = action
         self.current_pos = {"x": x, "y": 0}
         for _ in range(num_rotations):
@@ -226,8 +229,6 @@ class Tetris:
 
         while not self.check_collision(self.piece, self.current_pos):
             self.current_pos["y"] += 1
-            if render:
-                self.render()
 
         overflow = self.truncate(self.piece, self.current_pos)
         if overflow:
@@ -237,13 +238,21 @@ class Tetris:
 
         lines_cleared, self.board = self.check_cleared_rows(self.board)
         score = 1 + (lines_cleared ** 2) * self.width
-        self.score += score
+        self.reward += score
         self.tetrominoes += 1
         self.cleared_lines += lines_cleared
         if not self.gameover:
             self.new_piece()
         if self.gameover:
-            self.score -= 2
+            self.reward -= 2
+            self.plot_scores.append(self.reward)
+            self.total_rewards += self.reward
+            self.mean_score = self.total_rewards / epoch
+            self.total_rewards_10 = sum(self.plot_scores[-10:])
+            self.mean_score_10 = self.total_rewards_10 / 10
+            self.plot_mean_scores.append(self.mean_score)
+            self.total_cleared_lines.append(self.cleared_lines)
+            self.plot(self.plot_scores, self.plot_mean_scores, self.total_cleared_lines)
 
         return score, self.gameover
 
@@ -254,12 +263,12 @@ class Tetris:
     def drawGrid(self):    # for every element in the list, it creates a box with the 'size'
         for y in range(len(self.board)):
             for x in range(len(self.board[y])):
-                color = self.piece_colors[self.board[y][x]] # chooses the color with using the number of the grid block
+                color = shapes.tetrominos_colors[self.board[y][x]] # chooses the color with using the number of the grid block
                 x_grid, y_grid = (self.size + self.spacing) * x, (self.size + self.spacing) * y # defines the positions of the grid blocks
                 pygame.draw.rect(self.window, color, (x_grid, y_grid, self.size, self.size)) #Rect((left, top), (width, height))
     def drawPoints(self):
         superf_text = self.font.render("Score", True, "white")
-        superf_points = self.font.render(f'{int(self.score)}', True, "white")
+        superf_points = self.font.render(f'{int(self.reward)}', True, "white")
         rect_text = superf_text.get_rect()
         rect_points = superf_points.get_rect()
         rect_text.centerx = 228
@@ -289,7 +298,7 @@ class Tetris:
         self.window.blit(rect_surface, (0, 0))
         self.window.blit(superf_text, rect_text)
 
-    def drawInfo(self):
+    def drawInfo(self, epoch):
         # print("Epoch: {}/{}, Action: {}, Score: {}, Tetrominoes {}, Cleared lines: {}".format(
         #     epoch,
         #     opt.num_epochs,
@@ -297,11 +306,22 @@ class Tetris:
         #     final_score,
         #     final_tetrominoes,
         #     final_cleared_lines))
-        superf_text = self.font.render(f"{self.clock.get_fps():.0f}", True, "black")
-        rect_text = superf_text.get_rect()
-        rect_text.centerx = 228
-        rect_text.centery = 300
-        self.window.blit(superf_text, rect_text)
+        # pygame.draw.rect(self.window, self.boxColor, (178, 110, 100, 80), border_radius=5)
+        superf_text1 = self.small_font.render(f"Epoch: {epoch}", True, "white")
+        superf_text2 = self.small_font.render(f"Reward: {self.reward}", True, "white")
+        superf_text3 = self.small_font.render(f"Lines: {self.cleared_lines}", True, "white")
+        rect_text1 = superf_text1.get_rect()
+        rect_text1.x = 178
+        rect_text1.centery = 220
+        rect_text2 = superf_text2.get_rect()
+        rect_text2.x = 178
+        rect_text2.centery = 250
+        rect_text3 = superf_text3.get_rect()
+        rect_text3.x = 178
+        rect_text3.centery = 280
+        self.window.blit(superf_text1, rect_text1)
+        self.window.blit(superf_text2, rect_text2)
+        self.window.blit(superf_text3, rect_text3)
 
     def drawNextShape(self, xs,ys):
         shape = self.piece
@@ -309,55 +329,43 @@ class Tetris:
         for y in range(len(shape)):
             for x in range(len(shape[y])):
                 x_grid, y_grid = (self.size + self.spacing) * x + xs, (self.size + self.spacing) * y + ys # defines the positions of the grid blocks
-                color = self.piece_colors[shape[y][x]] # chooses the color with using the number of the grid block
+                color = shapes.tetrominos_colors[shape[y][x]] # chooses the color with using the number of the grid block
                 if not shape[y][x] == 0:
                     pygame.draw.rect(self.window, color, (x_grid, y_grid, self.size, self.size)) #Rect((left, top), (width, height)) 
 
-    def render(self):
+    def render(self, epoch):
 
         self.window.fill(self.bgColor)
         self.drawPoints()
         self.drawNext()
         self.drawGrid()
+        self.drawInfo(epoch)
 
-        # if not self.gameover:
-        #     img = [self.piece_colors[p] for row in self.get_current_board_state() for p in row]
-        # else:
-        #     img = [self.piece_colors[p] for row in self.board for p in row]
-        # img = np.array(img).reshape((self.height, self.width, 3)).astype(np.uint8)
-        # img = img[..., ::-1]
-        # img = Image.fromarray(img, "RGB")
-
-        # img = img.resize((self.width * self.block_size, self.height * self.block_size), 0)
-        # img = np.array(img)
-        # img[[i * self.block_size for i in range(self.height)], :, :] = 0
-        # img[:, [i * self.block_size for i in range(self.width)], :] = 0
-
-        # img = np.concatenate((img, self.extra_board), axis=1)
-
-
-        # cv2.putText(img, "Score:", (self.width * self.block_size + int(self.block_size / 2), self.block_size),
-        #             fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1.0, color=self.text_color)
-        # cv2.putText(img, str(self.score),
-        #             (self.width * self.block_size + int(self.block_size / 2), 2 * self.block_size),
-        #             fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1.0, color=self.text_color)
-
-        # cv2.putText(img, "Pieces:", (self.width * self.block_size + int(self.block_size / 2), 4 * self.block_size),
-        #             fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1.0, color=self.text_color)
-        # cv2.putText(img, str(self.tetrominoes),
-        #             (self.width * self.block_size + int(self.block_size / 2), 5 * self.block_size),
-        #             fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1.0, color=self.text_color)
-
-        # cv2.putText(img, "Lines:", (self.width * self.block_size + int(self.block_size / 2), 7 * self.block_size),
-        #             fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1.0, color=self.text_color)
-        # cv2.putText(img, str(self.cleared_lines),
-        #             (self.width * self.block_size + int(self.block_size / 2), 8 * self.block_size),
-        #             fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1.0, color=self.text_color)
-
-        # cv2.imshow("Deep Q-Learning Tetris", img)
-        # cv2.waitKey(1)
+        for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
 
         pygame.display.update()
 
-        # print(self.board)
-        # # self.printGrid()
+
+
+    def plot(self, scores, mean_scores, cleared_lines):
+        display.clear_output(wait=True)
+        display.display(plt.gcf())
+        plt.clf()
+        plt.title('Training...')
+        plt.xlabel('Number of Games')
+        plt.ylabel('Reward')
+        plt.plot(scores, color="tab:blue")
+        plt.plot(mean_scores, color="tab:red")
+        plt.plot(cleared_lines, color="tab:green")
+        plt.ylim(ymin=0)
+        plt.text(len(scores)-1, scores[-1], str(scores[-1]))
+        plt.text(len(mean_scores)-1, mean_scores[-1], str(mean_scores[-1]))
+        plt.text(len(cleared_lines)-1, cleared_lines[-1], str(cleared_lines[-1]))
+        plt.show(block=False)
+        plt.pause(.1)
+
+    def saveGraph(self, num):
+        plt.savefig(f"graph{num}.svg")

@@ -12,7 +12,7 @@ import torch.nn as nn
 from tensorboardX import SummaryWriter
 
 from src.deep_q_network import DeepQNetwork
-from src.tetris import Tetris, pygame
+from src.tetris import Tetris
 from collections import deque
 
 
@@ -59,7 +59,7 @@ def train(opt):
         state = state.cuda()
 
     replay_memory = deque(maxlen=opt.replay_memory_size)
-    epoch = 0
+    epoch = 1
     while epoch < opt.num_epochs:
         next_steps = env.get_next_states()
         # Exploration or exploitation
@@ -83,13 +83,15 @@ def train(opt):
         next_state = next_states[index, :]
         action = next_actions[index]
 
-        reward, done = env.step(action, render=True)
+        reward, done = env.step(action, epoch)
+        env.render(epoch)
+        
 
         if torch.cuda.is_available():
             next_state = next_state.cuda()
         replay_memory.append([state, reward, next_state, done])
         if done:
-            final_score = env.score
+            final_score = env.reward
             final_tetrominoes = env.tetrominoes
             final_cleared_lines = env.cleared_lines
             state = env.reset()
@@ -128,7 +130,7 @@ def train(opt):
         loss.backward()
         optimizer.step()
 
-        print("Epoch: {}/{}, Action: {}, Score: {}, Tetrominoes {}, Cleared lines: {}".format(
+        print("Epoch: {}/{}, Action: {}, Reward: {}, Tetrominoes {}, Cleared lines: {}".format(
             epoch,
             opt.num_epochs,
             action,
@@ -141,8 +143,10 @@ def train(opt):
 
         if epoch > 0 and epoch % opt.save_interval == 0:
             torch.save(model, "{}/tetris_{}".format(opt.saved_path, epoch))
+            env.saveGraph(epoch)
 
     torch.save(model, "{}/tetris".format(opt.saved_path))
+    env.saveGraph()
 
 
 if __name__ == "__main__":
