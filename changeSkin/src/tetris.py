@@ -235,7 +235,7 @@ class Tetris:
             self.gameover = True
 
         self.board = self.store(self.piece, self.current_pos)
-
+        self.epoch = epoch
         lines_cleared, self.board = self.check_cleared_rows(self.board)
         score = 1 + (lines_cleared ** 2) * self.width
         self.reward += score
@@ -245,14 +245,7 @@ class Tetris:
             self.new_piece()
         if self.gameover:
             self.reward -= 2
-            self.plot_scores.append(self.reward)
-            self.total_rewards += self.reward
-            self.mean_score = self.total_rewards / epoch
-            self.total_rewards_10 = sum(self.plot_scores[-10:])
-            self.mean_score_10 = self.total_rewards_10 / 10
-            self.plot_mean_scores.append(self.mean_score)
-            self.total_cleared_lines.append(self.cleared_lines)
-            self.plot(self.plot_scores, self.plot_mean_scores, self.total_cleared_lines)
+            # self.plot(epoch)
 
         return score, self.gameover
 
@@ -299,15 +292,7 @@ class Tetris:
         self.window.blit(superf_text, rect_text)
 
     def drawInfo(self, epoch):
-        # print("Epoch: {}/{}, Action: {}, Score: {}, Tetrominoes {}, Cleared lines: {}".format(
-        #     epoch,
-        #     opt.num_epochs,
-        #     action,
-        #     final_score,
-        #     final_tetrominoes,
-        #     final_cleared_lines))
-        # pygame.draw.rect(self.window, self.boxColor, (178, 110, 100, 80), border_radius=5)
-        superf_text1 = self.small_font.render(f"Epoch: {epoch}", True, "white")
+        superf_text1 = self.small_font.render(f"# Games: {epoch}", True, "white")
         superf_text2 = self.small_font.render(f"Reward: {self.reward}", True, "white")
         superf_text3 = self.small_font.render(f"Lines: {self.cleared_lines}", True, "white")
         rect_text1 = superf_text1.get_rect()
@@ -350,20 +335,28 @@ class Tetris:
 
 
 
-    def plot(self, scores, mean_scores, cleared_lines):
+    def plot(self):
+        self.plot_scores.append(self.reward)
+        self.total_rewards += self.reward
+        self.mean_score = self.total_rewards / self.epoch
+        self.total_rewards_10 = sum(self.plot_scores[-10:])
+        self.mean_score_10 = self.total_rewards_10 / 10
+        self.plot_mean_scores.append(self.mean_score)
+        self.total_cleared_lines.append(self.cleared_lines)
+
         display.clear_output(wait=True)
         display.display(plt.gcf())
         plt.clf()
         plt.title('Training...')
         plt.xlabel('Number of Games')
         plt.ylabel('Reward')
-        plt.plot(scores, color="tab:blue")
-        plt.plot(mean_scores, color="tab:red")
-        plt.plot(cleared_lines, color="tab:green")
+        plt.plot(self.plot_scores, color="tab:blue")
+        plt.plot(self.plot_mean_scores, color="tab:red")
+        plt.plot(self.total_cleared_lines, color="tab:green")
         plt.ylim(ymin=0)
-        plt.text(len(scores)-1, scores[-1], str(scores[-1]))
-        plt.text(len(mean_scores)-1, mean_scores[-1], str(mean_scores[-1]))
-        plt.text(len(cleared_lines)-1, cleared_lines[-1], str(cleared_lines[-1]))
+        plt.text(len(self.plot_scores)-1, self.plot_scores[-1], str(self.plot_scores[-1]))
+        plt.text(len(self.plot_mean_scores)-1, self.plot_mean_scores[-1], str(self.plot_mean_scores[-1]))
+        plt.text(len(self.total_cleared_lines)-1, self.total_cleared_lines[-1], str(self.total_cleared_lines[-1]))
         plt.show(block=False)
         plt.pause(.1)
 
