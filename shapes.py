@@ -120,6 +120,6 @@ T = [[
 
 tetrominos =  [I,O,S,Z,J,L,T]
 tetrominosStr =  ['I','O','S','Z','J','L','T']
-tetrominos_colors = [(15,20,32), (0, 205, 205), (225, 225, 0), (0, 205, 0), (255, 0, 0), (255, 128, 0), (0, 0, 205), (205, 0, 205)]
+tetrominos_colors = [(15,20,32), (102, 217, 238), (225, 225, 0), (0, 205, 0), (255, 0, 0), (254, 151, 32), (0, 0, 205), (147, 88, 254)]
 #                                       BLACK              CYAN            YELLOW        GREEN           RED            ORANGE        BLUE           PURPLE
 #                                        GRID                     I                         O                    S                   Z                       J                   L                      T

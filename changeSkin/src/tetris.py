@@ -1,13 +1,12 @@
 
 """
 @author: Viet Nguyen <nhviet1009@gmail.com>
+edited by: Pau Cardona
 """
 import numpy as np
-from matplotlib import style
 import torch
 import random
 import pygame
-import src.shapes as shapes
 import matplotlib.pyplot as plt
 from IPython import display
 
@@ -16,13 +15,13 @@ plt.ion()
 class Tetris:
     piece_colors = [
         (0, 0, 0),
-        (255, 255, 0),
+        (225, 225, 0),
         (147, 88, 254),
         (54, 175, 144),
         (255, 0, 0),
         (102, 217, 238),
         (254, 151, 32),
-        (0, 0, 255)
+        (0, 0, 205)
     ]
 
     pieces = [
@@ -256,9 +255,10 @@ class Tetris:
     def drawGrid(self):    # for every element in the list, it creates a box with the 'size'
         for y in range(len(self.board)):
             for x in range(len(self.board[y])):
-                color = shapes.tetrominos_colors[self.board[y][x]] # chooses the color with using the number of the grid block
+                color = self.piece_colors[self.board[y][x]] # chooses the color with using the number of the grid block
                 x_grid, y_grid = (self.size + self.spacing) * x, (self.size + self.spacing) * y # defines the positions of the grid blocks
                 pygame.draw.rect(self.window, color, (x_grid, y_grid, self.size, self.size)) #Rect((left, top), (width, height))
+    
     def drawPoints(self):
         superf_text = self.font.render("Score", True, "white")
         superf_points = self.font.render(f'{int(self.reward)}', True, "white")
@@ -271,15 +271,28 @@ class Tetris:
         self.window.blit(superf_text, rect_text)
         self.window.blit(superf_points, rect_points)
 
+    def drawReward(self):
+        superf_text = self.font.render("Reward", True, "white")
+        superf_points = self.font.render(f'{int(self.reward)}', True, "white")
+        rect_text = superf_text.get_rect()
+        rect_points = superf_points.get_rect()
+        rect_text.centerx = 228
+        rect_text.centery = 80
+        rect_points.centerx = 228
+        rect_points.centery = 115
+        pygame.draw.rect(self.window, self.boxColor, (178, 95, 100, 40), border_radius=5)
+        self.window.blit(superf_text, rect_text)
+        self.window.blit(superf_points, rect_points)
+
 
     def drawNext(self):
         superf_text = self.font.render("Next", True, "white")
 
         rect_text = superf_text.get_rect()
         rect_text.centerx = 228
-        rect_text.centery = 95
-        pygame.draw.rect(self.window, self.boxColor, (178, 110, 100, 80), border_radius=5)
-        self.drawNextShape(200, 115 + self.spacing)
+        rect_text.centery = 150
+        pygame.draw.rect(self.window, self.boxColor, (178, 165, 100, 80), border_radius=5)
+        self.drawNextShape(200, 168 + self.spacing)
         self.window.blit(superf_text, rect_text)
 
     def drawPaused(self):
@@ -293,20 +306,15 @@ class Tetris:
 
     def drawInfo(self, epoch):
         superf_text1 = self.small_font.render(f"# Games: {epoch}", True, "white")
-        superf_text2 = self.small_font.render(f"Reward: {self.reward}", True, "white")
-        superf_text3 = self.small_font.render(f"Lines: {self.cleared_lines}", True, "white")
+        superf_text2 = self.small_font.render(f"Lines: {self.cleared_lines}", True, "white")
         rect_text1 = superf_text1.get_rect()
         rect_text1.x = 178
-        rect_text1.centery = 220
+        rect_text1.centery = 275
         rect_text2 = superf_text2.get_rect()
         rect_text2.x = 178
-        rect_text2.centery = 250
-        rect_text3 = superf_text3.get_rect()
-        rect_text3.x = 178
-        rect_text3.centery = 280
+        rect_text2.centery = 305
         self.window.blit(superf_text1, rect_text1)
         self.window.blit(superf_text2, rect_text2)
-        self.window.blit(superf_text3, rect_text3)
 
     def drawNextShape(self, xs,ys):
         shape = self.piece
@@ -314,7 +322,7 @@ class Tetris:
         for y in range(len(shape)):
             for x in range(len(shape[y])):
                 x_grid, y_grid = (self.size + self.spacing) * x + xs, (self.size + self.spacing) * y + ys # defines the positions of the grid blocks
-                color = shapes.tetrominos_colors[shape[y][x]] # chooses the color with using the number of the grid block
+                color = self.piece_colors[shape[y][x]] # chooses the color with using the number of the grid block
                 if not shape[y][x] == 0:
                     pygame.draw.rect(self.window, color, (x_grid, y_grid, self.size, self.size)) #Rect((left, top), (width, height)) 
 
@@ -322,14 +330,15 @@ class Tetris:
 
         self.window.fill(self.bgColor)
         self.drawPoints()
+        self.drawReward()
         self.drawNext()
-        self.drawGrid()
         self.drawInfo(epoch)
-
+        self.drawGrid()
+        
         for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    quit()
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
 
         pygame.display.update()
 

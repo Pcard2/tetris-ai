@@ -1,5 +1,6 @@
 """
 @author: Viet Nguyen <nhviet1009@gmail.com>
+edited by: Pau Cardona
 """
 import argparse
 import os
@@ -83,9 +84,10 @@ def train(opt):
         next_state = next_states[index, :]
         action = next_actions[index]
 
+
         reward, done = env.step(action, epoch)
         env.render(epoch)
-        
+
 
         if torch.cuda.is_available():
             next_state = next_state.cuda()
