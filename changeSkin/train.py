@@ -147,9 +147,6 @@ def train(opt):
             torch.save(model, "{}/tetris_{}".format(opt.saved_path, epoch))
             env.saveGraph(epoch)
 
-    torch.save(model, "{}/tetris".format(opt.saved_path))
-    env.saveGraph()
-
 
 if __name__ == "__main__":
     opt = get_args()

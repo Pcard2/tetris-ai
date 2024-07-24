@@ -3,14 +3,19 @@
 @author: Viet Nguyen <nhviet1009@gmail.com>
 edited by: Pau Cardona
 """
+
+version = "24-AI"
+
 import numpy as np
 import torch
 import random
 import pygame
 import matplotlib.pyplot as plt
-from IPython import display
+import gspread
+from time import time
 
 plt.ion()
+plt.style.use('ggplot')
 
 class Tetris:
     piece_colors = [
@@ -60,8 +65,10 @@ class Tetris:
         self.size = block_size
         self.spacing = 2
 
+        self.points = 0
         pygame.init()
-        self.window = pygame.display.set_mode((288, 338), pygame.SRCALPHA)
+        xs, ys = 288, 388
+        self.window = pygame.display.set_mode((xs, ys), pygame.SRCALPHA)
         pygame.display.set_caption("Tetris game")
 
         self.font = pygame.font.SysFont('confortaa', 32)
@@ -71,12 +78,25 @@ class Tetris:
         self.plot_mean_scores = []
         self.total_cleared_lines = []
         self.total_rewards = 0
+
+        self.gameTime = time()
+        self.hi_score = 0
+        self.stats = {
+            "version": version,
+            "timePlayed": 0,
+            "points": 0,
+            "pointsHistory": [],
+            "linesCleared": 0,
+            "windowStats": {"gridSize": (self.width, self.height), "screenSize": (xs, ys)},
+            "totalPieces": 0,
+        }
         
 
     def reset(self):
         self.board = [[0] * self.width for _ in range(self.height)]
         self.reward = 0
         self.tetrominoes = 0
+        self.points = 0
         self.cleared_lines = 0
         self.bag = list(range(len(self.pieces)))
         random.shuffle(self.bag)
@@ -236,7 +256,7 @@ class Tetris:
         self.board = self.store(self.piece, self.current_pos)
         self.epoch = epoch
         lines_cleared, self.board = self.check_cleared_rows(self.board)
-        score = 1 + (lines_cleared ** 2) * self.width
+        score = self.scoring(lines_cleared)
         self.reward += score
         self.tetrominoes += 1
         self.cleared_lines += lines_cleared
@@ -244,7 +264,9 @@ class Tetris:
             self.new_piece()
         if self.gameover:
             self.reward -= 2
-            # self.plot(epoch)
+            self.plot()
+            if self.hi_score < self.points:
+                self.hi_score = self.points
 
         return score, self.gameover
 
@@ -261,7 +283,7 @@ class Tetris:
     
     def drawPoints(self):
         superf_text = self.font.render("Score", True, "white")
-        superf_points = self.font.render(f'{int(self.reward)}', True, "white")
+        superf_points = self.font.render(f'{int(self.points)}', True, "white")
         rect_text = superf_text.get_rect()
         rect_points = superf_points.get_rect()
         rect_text.centerx = 228
@@ -307,14 +329,19 @@ class Tetris:
     def drawInfo(self, epoch):
         superf_text1 = self.small_font.render(f"# Games: {epoch}", True, "white")
         superf_text2 = self.small_font.render(f"Lines: {self.cleared_lines}", True, "white")
+        superf_text3 = self.small_font.render(f"Hi-score: {self.hi_score}", True, "white")
         rect_text1 = superf_text1.get_rect()
         rect_text1.x = 178
         rect_text1.centery = 275
         rect_text2 = superf_text2.get_rect()
         rect_text2.x = 178
         rect_text2.centery = 305
+        rect_text3 = superf_text3.get_rect()
+        rect_text3.x = 178
+        rect_text3.centery = 335
         self.window.blit(superf_text1, rect_text1)
         self.window.blit(superf_text2, rect_text2)
+        self.window.blit(superf_text3, rect_text3)
 
     def drawNextShape(self, xs,ys):
         shape = self.piece
@@ -326,8 +353,75 @@ class Tetris:
                 if not shape[y][x] == 0:
                     pygame.draw.rect(self.window, color, (x_grid, y_grid, self.size, self.size)) #Rect((left, top), (width, height)) 
 
-    def render(self, epoch):
+    def scoring(self, lines_cleared):
+        reward = 0
+        comboCount = 0
+        if lines_cleared > 0:
+            comboCount += 1
+            match lines_cleared:
+                case 1: # Single
+                    self.points += 100
+                    self.stats["pointsHistory"].append("1LINE") ## STAT
+                    reward += 1
+                case 2: # Double
+                    self.stats["pointsHistory"].append("2LINES") ## STAT
+                    self.points += 200
+                    reward += 2
+                case 3: # Triple
+                    self.stats["pointsHistory"].append("3LINES") ## STAT
+                    self.points += 400
+                    reward += 4
+                case 4: # Tetris
+                    self.stats["pointsHistory"].append("4LINES") ## STAT
+                    self.points += 800
+                    reward += 8
+            if comboCount > 1:
+                self.points *= 1.5
+                comboCount += 1
+        else:
+            comboCount = 1
+        score = comboCount + reward * self.width
+        return score
 
+    def uploadStats(self):
+        print("[DEBUG] SAVING STATS...")
+
+        self.stats["points"] = self.points ## STAT
+        self.stats["timePlayed"] = time() - self.gameTime ## STAT
+        self.stats["points"] = self.points
+        self.stats["linesCleared"] = self.cleared_lines
+        self.stats["totalPieces"] = self.tetrominoes
+
+        ## gspread
+        credentials = {
+            "type": "service_account",
+            "project_id": "tetris-tdr",
+            "private_key_id": "5894339241a935a22bc8530dd935698eb570612f",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDIFe3wqbC6KlY8\nOodNRQPNEPlZiXzJyeVfS7lT/H5Gt8G9c1f507Lu24P+qZmx4ApNr5LyiHgbLYTq\nJLfCsLKIHEFP3PTSkJKG+Y+hjVZIKlZvIhe2j27J3LHeANg55FHM59lXO7U2IPxK\nY75HxBo9pimfBukDX6XiNt7D95irpCr56Nxdj98B4IkNAvoOWTozCh3hnRNT72Yf\nuKLl+8g5dOj4aS0C2QHH1bT2mlG+I1YJeDkZNAPfqGp1mG4yUqcoSbdfW1UQqhgw\nkPpdJAGTVXac3u8PXc5LdM42iUpKyEiA25ppv9+oE6uhi+2LjnFunUx5Fo4q54EW\ncKHQLGp7AgMBAAECggEAA8/LIyEQcVN6JhaVWkb8zgzLO0XvvyZd/MVECBIQ08cP\nZU0LuYIrb/p1lsXjXCyg9Z7pJT6tTxM8a3t8lrRoCkjDg8J5VYOUjwa1EkZPhPtt\nfxt+qSctXKIcL1cDx4KOfmFSViOYjanuNHqW9uYI+/Cs7U8j5EEPt3IFJ2WRnn9u\n/wezuMS9medFO0ZT8q5tjIH8kq5qQ2MKYHW/CSD1UWNDIgv+YCaC7tYBheiF4dj7\nBpUfqfGNNOUphfYDjKen//5UoJuOxRl/zvxVap3P+/O7bEAsziWw8/HX5J6dNXi9\n18BiZwgtJqNcaimYYYh5BRGJYUCknHVTj7/BpRmAsQKBgQDzBvHJHjp/RJ0M9riU\ntp2hladFuNL7yFk5nSBNqIvP12sAZnyV63U2D0XVTg35FFJBtry+Az9nWW2E28Sm\npY9iQyx6IZ0x7EzmAvMAk10jyv7DXElssnizhapbLjyjre3pwJys7POGSHUFtEYO\nMomVCYf987TXQGSBddH3jX3N8QKBgQDSxCyKYpvvwS+RTNIXN9+jFdfou89U/0XY\nIjK7yeUqPaBodJOduc85CrIK8NFI5r5X+bYznQlkjsQxIpXae2Tqip8CM1mWWH46\nLZaC+WcxFF3MyLbrloN7bIj4bCfHGE0HZxtSFGnjtxHFS0jWMmXWPCo7ZHeUcpKT\n9ngJH7EDKwKBgQCgufQIbfyEFQ3E+BsFB21i40W4X87xhAQ2jUtC8PheYfq7TgyR\nXiKruRgXRUMKez0XhtJ23FD/ee5rkqkRCae1dfWhZD/BN6V37XVm6Q8NUACDlbJd\nt/8Jw5nyKbcjDTGuiZtU5nT8V0lFl39JfnTtY1tUQexU+5o84H4XubT9EQKBgEpV\nmgfso2a50dcDKw25TQytxYp1wrgNmEqUNSR6HnL5bTup8e4s/GL33LdzG70EdJl+\nnr4xYoCuwY86zXNTFdKKtW4HQk9+QnauYWksITL0Jej12V3ZpeG/88b6DkVv0qsL\nuF0IihggFwpodPXmrHgUnCh6VJpsljnNMaS2Iq4lAoGAJCzvDUJXDXNvcCFWMHrH\nEpFw3LwNlB3VuXJoc5QFHX/tZvzOxMldfXzo7widthfy3x4EGqA25DbBKHGfvlwWUqJ\na5IjlN2wXOdjOZ9Ks+VVc4fA1IcHqqCyvcSwfe89gYOCpTIBPhUw2H8T/47cP2GI\nwJEGfVeDPaVLjfdydfwpnQ8=\n-----END PRIVATE KEY-----\n",
+            "client_email": "tetris-tdr@tetris-tdr.iam.gserviceaccount.com",
+            "client_id": "100570209494388998451",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/tetris-tdr%40tetris-tdr.iam.gserviceaccount.com",
+            "universe_domain": "googleapis.com"
+        }
+        gc = gspread.service_account_from_dict(credentials)
+        sh = gc.open("Python Game Playtesters")
+        wks = sh.worksheet("AI")
+
+        i=2
+        while wks.get('A'+str(i))[0] != []: # while empty cell value
+            i+=1
+
+        stats_list = []
+        for a in self.stats:
+            stats_list.append(str(self.stats[a]))
+            
+        wks.update('A'+str(i), [stats_list])
+        print("[DEBUG] SAVED STATS!")
+
+    def render(self, epoch):
         self.window.fill(self.bgColor)
         self.drawPoints()
         self.drawReward()
@@ -337,31 +431,26 @@ class Tetris:
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                # self.uploadStats()
                 pygame.quit()
                 quit()
 
         pygame.display.update()
 
-
-
     def plot(self):
         self.plot_scores.append(self.reward)
         self.total_rewards += self.reward
         self.mean_score = self.total_rewards / self.epoch
-        self.total_rewards_10 = sum(self.plot_scores[-10:])
-        self.mean_score_10 = self.total_rewards_10 / 10
         self.plot_mean_scores.append(self.mean_score)
         self.total_cleared_lines.append(self.cleared_lines)
 
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
         plt.clf()
         plt.title('Training...')
         plt.xlabel('Number of Games')
         plt.ylabel('Reward')
         plt.plot(self.plot_scores, color="tab:blue")
         plt.plot(self.plot_mean_scores, color="tab:red")
-        plt.plot(self.total_cleared_lines, color="tab:green")
+        # plt.plot(self.total_cleared_lines, color="tab:green")
         plt.ylim(ymin=0)
         plt.text(len(self.plot_scores)-1, self.plot_scores[-1], str(self.plot_scores[-1]))
         plt.text(len(self.plot_mean_scores)-1, self.plot_mean_scores[-1], str(self.plot_mean_scores[-1]))
@@ -370,4 +459,4 @@ class Tetris:
         plt.pause(.1)
 
     def saveGraph(self, num):
-        plt.savefig(f"graph{num}.svg")
+        plt.savefig(f"trained_models/graph{num}.svg")
