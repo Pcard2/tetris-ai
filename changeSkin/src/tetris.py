@@ -58,6 +58,7 @@ class Tetris:
         self.extra_board = np.ones((self.height * self.block_size, self.width * int(self.block_size / 2), 3),
                                    dtype=np.uint8) * np.array([204, 204, 255], dtype=np.uint8)
         self.text_color = (200, 20, 220)
+        self.holes = 0
         self.reset()
 
         self.bgColor = (95,95,178)
@@ -122,6 +123,14 @@ class Tetris:
         lines_cleared, board = self.check_cleared_rows(board)
         holes = self.get_holes(board)
         bumpiness, height = self.get_bumpiness_and_height(board)
+
+        
+        self.reward += self.holes - holes
+        self.holes = holes
+
+        
+
+        
 
         return torch.FloatTensor([lines_cleared, holes, bumpiness, height])
 
@@ -438,14 +447,14 @@ class Tetris:
         pygame.display.update()
 
     def plot(self):
-        self.plot_scores.append(self.reward)
         self.total_rewards += self.reward
-        self.mean_score = self.total_rewards / self.epoch
+        self.plot_scores.append(self.reward)
+        self.mean_score = sum(self.plot_scores[-100:]) / 100
         self.plot_mean_scores.append(self.mean_score)
-        self.total_cleared_lines.append(self.cleared_lines)
+        # self.total_cleared_lines.append(self.cleared_lines)
 
         plt.clf()
-        plt.title('Training...')
+        plt.title(f'Epoch: {self.epoch}')
         plt.xlabel('Number of Games')
         plt.ylabel('Reward')
         plt.plot(self.plot_scores, color="tab:blue")
@@ -454,7 +463,7 @@ class Tetris:
         plt.ylim(ymin=0)
         plt.text(len(self.plot_scores)-1, self.plot_scores[-1], str(self.plot_scores[-1]))
         plt.text(len(self.plot_mean_scores)-1, self.plot_mean_scores[-1], str(self.plot_mean_scores[-1]))
-        plt.text(len(self.total_cleared_lines)-1, self.total_cleared_lines[-1], str(self.total_cleared_lines[-1]))
+        # plt.text(len(self.total_cleared_lines)-1, self.total_cleared_lines[-1], str(self.total_cleared_lines[-1]))
         plt.show(block=False)
         plt.pause(.1)
 
