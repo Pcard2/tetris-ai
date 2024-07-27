@@ -15,7 +15,7 @@ def get_args():
     parser.add_argument("--height", type=int, default=20, help="The common height for all images")
     parser.add_argument("--block_size", type=int, default=30, help="Size of a block")
     parser.add_argument("--fps", type=int, default=300, help="frames per second")
-    parser.add_argument("--saved_path", type=str, default="e:/.Homework/Tetris")
+    parser.add_argument("--saved_path", type=str, default="trained_models")
     parser.add_argument("--output", type=str, default="output.mp4")
 
     args = parser.parse_args()
@@ -28,9 +28,9 @@ def test(opt):
     else:
         torch.manual_seed(123)
     if torch.cuda.is_available():
-        model = torch.load("{}/test".format(opt.saved_path))
+        model = torch.load("{}/tetris_3000".format(opt.saved_path))
     else:
-        model = torch.load("{}/test".format(opt.saved_path), map_location=lambda storage, loc: storage)
+        model = torch.load("{}/tetris_3000".format(opt.saved_path), map_location=lambda storage, loc: storage)
     model.eval()
     env = Tetris(width=opt.width, height=opt.height, block_size=opt.block_size)
     env.reset()

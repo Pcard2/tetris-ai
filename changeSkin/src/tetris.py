@@ -125,12 +125,8 @@ class Tetris:
         bumpiness, height = self.get_bumpiness_and_height(board)
 
         
-        self.reward += self.holes - holes
-        self.holes = holes
-
-        
-
-        
+        # self.reward += self.holes - holes
+        # self.holes = holes
 
         return torch.FloatTensor([lines_cleared, holes, bumpiness, height])
 
@@ -431,6 +427,8 @@ class Tetris:
         print("[DEBUG] SAVED STATS!")
 
     def render(self, epoch):
+        self.printGrid()
+
         self.window.fill(self.bgColor)
         self.drawPoints()
         self.drawReward()
@@ -449,7 +447,8 @@ class Tetris:
     def plot(self):
         self.total_rewards += self.reward
         self.plot_scores.append(self.reward)
-        self.mean_score = sum(self.plot_scores[-100:]) / 100
+        # self.mean_score = sum(self.plot_scores[-100:]) / 100  # mean scores of last 100 games
+        self.mean_score = self.total_rewards / self.epoch
         self.plot_mean_scores.append(self.mean_score)
         # self.total_cleared_lines.append(self.cleared_lines)
 
