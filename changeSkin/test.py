@@ -14,9 +14,7 @@ def get_args():
     parser.add_argument("--width", type=int, default=10, help="The common width for all images")
     parser.add_argument("--height", type=int, default=20, help="The common height for all images")
     parser.add_argument("--block_size", type=int, default=15, help="Size of a block")
-    parser.add_argument("--fps", type=int, default=300, help="frames per second")
     parser.add_argument("--saved_path", type=str, default="trained_models")
-    parser.add_argument("--output", type=str, default="output.mp4")
 
     args = parser.parse_args()
     return args
@@ -36,8 +34,6 @@ def test(opt):
     env.reset()
     if torch.cuda.is_available():
         model.cuda()
-    # out = cv2.VideoWriter(opt.output, cv2.VideoWriter_fourcc(*"MJPG"), opt.fps,
-    #                       (int(1.5*opt.width*opt.block_size), opt.height*opt.block_size))
     while True:
         next_steps = env.get_next_states()
         next_actions, next_states = zip(*next_steps.items())
@@ -52,9 +48,6 @@ def test(opt):
 
         if done:
             env.reset()
-
-        
-
 
 if __name__ == "__main__":
     opt = get_args()

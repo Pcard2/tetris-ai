@@ -230,14 +230,25 @@ class Tetris:
                     board[y + pos["y"]][x + pos["x"]] = piece[y][x]
         return board
 
-    def check_cleared_rows(self, board):
-        to_delete = []
-        for i, row in enumerate(board[::-1]):
-            if 0 not in row:
-                to_delete.append(len(board) - 1 - i)
-        if len(to_delete) > 0:
-            board = self.remove_row(board, to_delete)
-        return len(to_delete), board
+    # def check_cleared_rows(self, board):
+    #     to_delete = []
+    #     for i, row in enumerate(board[::-1]):
+    #         if 0 not in row:
+    #             to_delete.append(len(board) - 1 - i)
+    #     if len(to_delete) > 0:
+    #         board = self.remove_row(board, to_delete)
+    #     return len(to_delete), board
+    
+    def check_cleared_rows(self, board): # looks at every line in the gridand, if every space is occupied, it clears the line anc creates a new one
+        linesCleared = 0
+        for y in range(len(board)):
+            if not 0 in board[y]:
+                for yReplace in range(y, 0, -1): # start:y end:0 step:-1
+                    board[yReplace] = board[yReplace-1]
+                board[0] = [0] * len(board[0]) # defines first line to be clear because of a bug where pieces stretch
+                linesCleared += 1
+                
+        return linesCleared, board 
 
     def remove_row(self, board, indices):
         for i in indices[::-1]:
@@ -427,8 +438,6 @@ class Tetris:
         print("[DEBUG] SAVED STATS!")
 
     def render(self, epoch):
-        self.printGrid()
-
         self.window.fill(self.bgColor)
         self.drawPoints()
         self.drawReward()

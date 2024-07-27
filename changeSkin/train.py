@@ -3,15 +3,9 @@
 edited by: Pau Cardona
 """
 import argparse
-import os
-import shutil
 from random import random, randint, sample
-
-import numpy as np
 import torch
 import torch.nn as nn
-from tensorboardX import SummaryWriter
-
 from src.deep_q_network import DeepQNetwork
 from src.tetris import Tetris
 from collections import deque
@@ -45,10 +39,6 @@ def train(opt):
         torch.cuda.manual_seed(123)
     else:
         torch.manual_seed(123)
-    if os.path.isdir(opt.log_path):
-        shutil.rmtree(opt.log_path)
-    os.makedirs(opt.log_path)
-    writer = SummaryWriter(opt.log_path)
     env = Tetris(width=opt.width, height=opt.height, block_size=opt.block_size)
     model = DeepQNetwork()
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
@@ -109,7 +99,7 @@ def train(opt):
         batch = sample(replay_memory, min(len(replay_memory), opt.batch_size))
         state_batch, reward_batch, next_state_batch, done_batch = zip(*batch)
         state_batch = torch.stack(tuple(state for state in state_batch))
-        reward_batch = torch.from_numpy(np.array(reward_batch, dtype=np.float32)[:, None])
+        reward_batch = torch.tensor(reward_batch, dtype=torch.float32)[:, None]
         next_state_batch = torch.stack(tuple(state for state in next_state_batch))
 
         if torch.cuda.is_available():
@@ -139,9 +129,6 @@ def train(opt):
             final_score,
             final_tetrominoes,
             final_cleared_lines))
-        writer.add_scalar('Train/Score', final_score, epoch - 1)
-        writer.add_scalar('Train/Tetrominoes', final_tetrominoes, epoch - 1)
-        writer.add_scalar('Train/Cleared lines', final_cleared_lines, epoch - 1)
 
         if epoch > 0 and epoch % opt.save_interval == 0:
             torch.save(model, "{}/tetris_{}".format(opt.saved_path, epoch))
