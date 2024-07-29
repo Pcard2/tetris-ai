@@ -10,7 +10,6 @@ from src.deep_q_network import DeepQNetwork
 from src.tetris import Tetris
 from collections import deque
 
-
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of Deep Q Network to play Tetris""")
@@ -122,13 +121,13 @@ def train(opt):
         loss.backward()
         optimizer.step()
 
-        print("Epoch: {}/{}, Action: {}, Reward: {}, Tetrominoes {}, Cleared lines: {}".format(
-            epoch,
-            opt.num_epochs,
-            action,
-            final_score,
-            final_tetrominoes,
-            final_cleared_lines))
+        # print("Epoch: {}/{}, Action: {}, Reward: {}, Tetrominoes {}, Cleared lines: {}".format(
+        #     epoch,
+        #     opt.num_epochs,
+        #     action,
+        #     final_score,
+        #     final_tetrominoes,
+        #     final_cleared_lines))
 
         if epoch > 0 and epoch % opt.save_interval == 0:
             torch.save(model, "{}/tetris_{}".format(opt.saved_path, epoch))

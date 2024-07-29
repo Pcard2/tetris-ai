@@ -8,7 +8,7 @@ from datetime import datetime ## FOR PLAYER GAME
 import gspread ## SPREADSHEETS
 from time import time
 
-version = "24-game"
+version = "24.2-game"
 
 ### CUSTOMIZE ###
 MOVE_SPEED = 80
@@ -19,14 +19,11 @@ FALL_SPEED = 270
 ##############################    INICIALIZATION    ##############################
 grid = []
 
-width,height = 288,338
+
 bgColor = (95,95,178)
 boxColor = (110,130,212)
-size = 15
-spacing = 2
 
 pygame.init()
-window = pygame.display.set_mode((width, height), pygame.SRCALPHA)
 pygame.display.set_caption("Tetris game")
 clock = pygame.time.Clock()
 
@@ -251,8 +248,17 @@ def uploadStats(stats):
 
 ###################################################################
 
-xg, yg = 10, 20
+xg, yg = 20, 40
+if xg > yg:
+    big = xg
+else:
+    big = yg
+size = 300 // big
+spacing = 2
 createGrid(xg, yg)
+
+width,height = (288), (size * big + spacing * yg)
+window = pygame.display.set_mode((width, height), pygame.SRCALPHA)
 
 executant = True
 points = 0

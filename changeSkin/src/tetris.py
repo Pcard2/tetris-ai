@@ -22,11 +22,11 @@ class Tetris:
         (0, 0, 0),
         (225, 225, 0),
         (147, 88, 254),
-        (54, 175, 144),
+        (0, 205, 0),
         (255, 0, 0),
         (102, 217, 238),
         (254, 151, 32),
-        (0, 0, 205)
+        (0, 0, 255)
     ]
 
     pieces = [
@@ -55,7 +55,7 @@ class Tetris:
         self.height = height
         self.width = width
         self.block_size = block_size
-        self.extra_board = np.ones((self.height * self.block_size, self.width * int(self.block_size / 2), 3),
+        self.extra_grid = np.ones((self.height * self.block_size, self.width * int(self.block_size / 2), 3),
                                    dtype=np.uint8) * np.array([204, 204, 255], dtype=np.uint8)
         self.text_color = (200, 20, 220)
         self.holes = 0
@@ -84,28 +84,26 @@ class Tetris:
         self.hi_score = 0
         self.stats = {
             "version": version,
-            "timePlayed": 0,
+            "time_played": 0,
             "points": 0,
-            "pointsHistory": [],
-            "linesCleared": 0,
-            "windowStats": {"gridSize": (self.width, self.height), "screenSize": (xs, ys)},
-            "totalPieces": 0,
+            "points_history": [],
+            "lines_cleared": 0,
+            "windowStats": {"grid_size": (self.width, self.height), "screen_size": (xs, ys)},
+            "total_pieces": 0,
         }
         
 
     def reset(self):
-        self.board = [[0] * self.width for _ in range(self.height)]
+        self.grid = [[0] * self.width for _ in range(self.height)]
         self.reward = 0
         self.tetrominoes = 0
         self.points = 0
         self.cleared_lines = 0
-        self.bag = list(range(len(self.pieces)))
-        random.shuffle(self.bag)
-        self.ind = self.bag.pop()
+        self.ind = random.randint(0, len(self.pieces)-1)
         self.piece = [row[:] for row in self.pieces[self.ind]]
         self.current_pos = {"x": self.width // 2 - len(self.piece[0]) // 2, "y": 0}
         self.gameover = False
-        return self.get_state_properties(self.board)
+        return self.get_state_properties(self.grid)
 
     def rotate(self, piece):
         num_rows_orig = num_cols_new = len(piece)
@@ -119,10 +117,10 @@ class Tetris:
             rotated_array.append(new_row)
         return rotated_array
 
-    def get_state_properties(self, board):
-        lines_cleared, board = self.check_cleared_rows(board)
-        holes = self.get_holes(board)
-        bumpiness, height = self.get_bumpiness_and_height(board)
+    def get_state_properties(self, grid):
+        lines_cleared, grid = self.check_cleared_rows(grid)
+        holes = self.get_holes(grid)
+        bumpiness, height = self.get_bumpiness_and_height(grid)
 
         
         # self.reward += self.holes - holes
@@ -130,18 +128,18 @@ class Tetris:
 
         return torch.FloatTensor([lines_cleared, holes, bumpiness, height])
 
-    def get_holes(self, board):
+    def get_holes(self, grid):
         num_holes = 0
-        for col in zip(*board):
+        for col in zip(*grid):
             row = 0
             while row < self.height and col[row] == 0:
                 row += 1
             num_holes += len([x for x in col[row + 1:] if x == 0])
         return num_holes
 
-    def get_bumpiness_and_height(self, board):
-        board = np.array(board)
-        mask = board != 0
+    def get_bumpiness_and_height(self, grid):
+        grid = np.array(grid)
+        mask = grid != 0
         invert_heights = np.where(mask.any(axis=0), np.argmax(mask, axis=0), self.height)
         heights = self.height - invert_heights
         total_height = np.sum(heights)
@@ -170,23 +168,20 @@ class Tetris:
                 while not self.check_collision(piece, pos):
                     pos["y"] += 1
                 self.truncate(piece, pos)
-                board = self.store(piece, pos)
-                states[(x, i)] = self.get_state_properties(board)
+                grid = self.store(piece, pos)
+                states[(x, i)] = self.get_state_properties(grid)
             curr_piece = self.rotate(curr_piece)
         return states
 
-    def get_current_board_state(self):
-        board = [x[:] for x in self.board]
+    def get_current_grid_state(self):
+        grid = [x[:] for x in self.grid]
         for y in range(len(self.piece)):
             for x in range(len(self.piece[y])):
-                board[y + self.current_pos["y"]][x + self.current_pos["x"]] = self.piece[y][x]
-        return board
+                grid[y + self.current_pos["y"]][x + self.current_pos["x"]] = self.piece[y][x]
+        return grid
 
     def new_piece(self):
-        if not len(self.bag):
-            self.bag = list(range(len(self.pieces)))
-            random.shuffle(self.bag)
-        self.ind = self.bag.pop()
+        self.ind = random.randint(0, len(self.pieces)-1)
         self.piece = [row[:] for row in self.pieces[self.ind]]
         self.current_pos = {"x": self.width // 2 - len(self.piece[0]) // 2,
                             "y": 0
@@ -198,7 +193,7 @@ class Tetris:
         future_y = pos["y"] + 1
         for y in range(len(piece)):
             for x in range(len(piece[y])):
-                if future_y + y > self.height - 1 or self.board[future_y + y][pos["x"] + x] and piece[y][x]:
+                if future_y + y > self.height - 1 or self.grid[future_y + y][pos["x"] + x] and piece[y][x]:
                     return True
         return False
 
@@ -207,7 +202,7 @@ class Tetris:
         last_collision_row = -1
         for y in range(len(piece)):
             for x in range(len(piece[y])):
-                if self.board[pos["y"] + y][pos["x"] + x] and piece[y][x]:
+                if self.grid[pos["y"] + y][pos["x"] + x] and piece[y][x]:
                     if y > last_collision_row:
                         last_collision_row = y
 
@@ -218,43 +213,28 @@ class Tetris:
                 del piece[0]
                 for y in range(len(piece)):
                     for x in range(len(piece[y])):
-                        if self.board[pos["y"] + y][pos["x"] + x] and piece[y][x] and y > last_collision_row:
+                        if self.grid[pos["y"] + y][pos["x"] + x] and piece[y][x] and y > last_collision_row:
                             last_collision_row = y
         return gameover
 
     def store(self, piece, pos):
-        board = [x[:] for x in self.board]
+        grid = [x[:] for x in self.grid]
         for y in range(len(piece)):
             for x in range(len(piece[y])):
-                if piece[y][x] and not board[y + pos["y"]][x + pos["x"]]:
-                    board[y + pos["y"]][x + pos["x"]] = piece[y][x]
-        return board
-
-    # def check_cleared_rows(self, board):
-    #     to_delete = []
-    #     for i, row in enumerate(board[::-1]):
-    #         if 0 not in row:
-    #             to_delete.append(len(board) - 1 - i)
-    #     if len(to_delete) > 0:
-    #         board = self.remove_row(board, to_delete)
-    #     return len(to_delete), board
+                if piece[y][x] and not grid[y + pos["y"]][x + pos["x"]]:
+                    grid[y + pos["y"]][x + pos["x"]] = piece[y][x]
+        return grid
     
-    def check_cleared_rows(self, board): # looks at every line in the gridand, if every space is occupied, it clears the line anc creates a new one
-        linesCleared = 0
-        for y in range(len(board)):
-            if not 0 in board[y]:
+    def check_cleared_rows(self, grid): # looks at every line in the gridand, if every space is occupied, it clears the line anc creates a new one
+        lines_cleared = 0
+        for y in range(len(grid)):
+            if not 0 in grid[y]:
                 for yReplace in range(y, 0, -1): # start:y end:0 step:-1
-                    board[yReplace] = board[yReplace-1]
-                board[0] = [0] * len(board[0]) # defines first line to be clear because of a bug where pieces stretch
-                linesCleared += 1
+                    grid[yReplace] = grid[yReplace-1]
+                grid[0] = [0] * len(grid[0]) # defines first line to be clear because of a bug where pieces stretch
+                lines_cleared += 1
                 
-        return linesCleared, board 
-
-    def remove_row(self, board, indices):
-        for i in indices[::-1]:
-            del board[i]
-            board = [[0 for _ in range(self.width)]] + board
-        return board
+        return lines_cleared, grid 
 
     def step(self, action, epoch):
         x, num_rotations = action
@@ -269,9 +249,9 @@ class Tetris:
         if overflow:
             self.gameover = True
 
-        self.board = self.store(self.piece, self.current_pos)
+        self.grid = self.store(self.piece, self.current_pos)
         self.epoch = epoch
-        lines_cleared, self.board = self.check_cleared_rows(self.board)
+        lines_cleared, self.grid = self.check_cleared_rows(self.grid)
         score = self.scoring(lines_cleared)
         self.reward += score
         self.tetrominoes += 1
@@ -287,13 +267,13 @@ class Tetris:
         return score, self.gameover
 
     def printGrid(self): # prints the grid line
-        for line in self.board:
+        for line in self.grid:
             print(line)
 
     def drawGrid(self):    # for every element in the list, it creates a box with the 'size'
-        for y in range(len(self.board)):
-            for x in range(len(self.board[y])):
-                color = self.piece_colors[self.board[y][x]] # chooses the color with using the number of the grid block
+        for y in range(len(self.grid)):
+            for x in range(len(self.grid[y])):
+                color = self.piece_colors[self.grid[y][x]] # chooses the color with using the number of the grid block
                 x_grid, y_grid = (self.size + self.spacing) * x, (self.size + self.spacing) * y # defines the positions of the grid blocks
                 pygame.draw.rect(self.window, color, (x_grid, y_grid, self.size, self.size)) #Rect((left, top), (width, height))
     
@@ -371,49 +351,49 @@ class Tetris:
 
     def scoring(self, lines_cleared):
         reward = 0
-        comboCount = 0
+        combo_count = 0
         if lines_cleared > 0:
-            comboCount += 1
+            combo_count += 1
             match lines_cleared:
                 case 1: # Single
                     self.points += 100
-                    self.stats["pointsHistory"].append("1LINE") ## STAT
+                    self.stats["points_history"].append("1LINE") ## STAT
                     reward += 1
                 case 2: # Double
-                    self.stats["pointsHistory"].append("2LINES") ## STAT
+                    self.stats["points_history"].append("2LINES") ## STAT
                     self.points += 200
                     reward += 2
                 case 3: # Triple
-                    self.stats["pointsHistory"].append("3LINES") ## STAT
+                    self.stats["points_history"].append("3LINES") ## STAT
                     self.points += 400
                     reward += 4
                 case 4: # Tetris
-                    self.stats["pointsHistory"].append("4LINES") ## STAT
+                    self.stats["points_history"].append("4LINES") ## STAT
                     self.points += 800
                     reward += 8
-            if comboCount > 1:
+            if combo_count > 1:
                 self.points *= 1.5
-                comboCount += 1
+                combo_count += 1
         else:
-            comboCount = 1
-        score = comboCount + reward * self.width
+            combo_count = 1
+        score = combo_count + reward * self.width
         return score
 
     def uploadStats(self):
         print("[DEBUG] SAVING STATS...")
 
         self.stats["points"] = self.points ## STAT
-        self.stats["timePlayed"] = time() - self.gameTime ## STAT
+        self.stats["time_played"] = time() - self.gameTime ## STAT
         self.stats["points"] = self.points
-        self.stats["linesCleared"] = self.cleared_lines
-        self.stats["totalPieces"] = self.tetrominoes
+        self.stats["lines_cleared"] = self.cleared_lines
+        self.stats["total_pieces"] = self.tetrominoes
 
         ## gspread
         credentials = {
             "type": "service_account",
             "project_id": "tetris-tdr",
             "private_key_id": "5894339241a935a22bc8530dd935698eb570612f",
-            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDIFe3wqbC6KlY8\nOodNRQPNEPlZiXzJyeVfS7lT/H5Gt8G9c1f507Lu24P+qZmx4ApNr5LyiHgbLYTq\nJLfCsLKIHEFP3PTSkJKG+Y+hjVZIKlZvIhe2j27J3LHeANg55FHM59lXO7U2IPxK\nY75HxBo9pimfBukDX6XiNt7D95irpCr56Nxdj98B4IkNAvoOWTozCh3hnRNT72Yf\nuKLl+8g5dOj4aS0C2QHH1bT2mlG+I1YJeDkZNAPfqGp1mG4yUqcoSbdfW1UQqhgw\nkPpdJAGTVXac3u8PXc5LdM42iUpKyEiA25ppv9+oE6uhi+2LjnFunUx5Fo4q54EW\ncKHQLGp7AgMBAAECggEAA8/LIyEQcVN6JhaVWkb8zgzLO0XvvyZd/MVECBIQ08cP\nZU0LuYIrb/p1lsXjXCyg9Z7pJT6tTxM8a3t8lrRoCkjDg8J5VYOUjwa1EkZPhPtt\nfxt+qSctXKIcL1cDx4KOfmFSViOYjanuNHqW9uYI+/Cs7U8j5EEPt3IFJ2WRnn9u\n/wezuMS9medFO0ZT8q5tjIH8kq5qQ2MKYHW/CSD1UWNDIgv+YCaC7tYBheiF4dj7\nBpUfqfGNNOUphfYDjKen//5UoJuOxRl/zvxVap3P+/O7bEAsziWw8/HX5J6dNXi9\n18BiZwgtJqNcaimYYYh5BRGJYUCknHVTj7/BpRmAsQKBgQDzBvHJHjp/RJ0M9riU\ntp2hladFuNL7yFk5nSBNqIvP12sAZnyV63U2D0XVTg35FFJBtry+Az9nWW2E28Sm\npY9iQyx6IZ0x7EzmAvMAk10jyv7DXElssnizhapbLjyjre3pwJys7POGSHUFtEYO\nMomVCYf987TXQGSBddH3jX3N8QKBgQDSxCyKYpvvwS+RTNIXN9+jFdfou89U/0XY\nIjK7yeUqPaBodJOduc85CrIK8NFI5r5X+bYznQlkjsQxIpXae2Tqip8CM1mWWH46\nLZaC+WcxFF3MyLbrloN7bIj4bCfHGE0HZxtSFGnjtxHFS0jWMmXWPCo7ZHeUcpKT\n9ngJH7EDKwKBgQCgufQIbfyEFQ3E+BsFB21i40W4X87xhAQ2jUtC8PheYfq7TgyR\nXiKruRgXRUMKez0XhtJ23FD/ee5rkqkRCae1dfWhZD/BN6V37XVm6Q8NUACDlbJd\nt/8Jw5nyKbcjDTGuiZtU5nT8V0lFl39JfnTtY1tUQexU+5o84H4XubT9EQKBgEpV\nmgfso2a50dcDKw25TQytxYp1wrgNmEqUNSR6HnL5bTup8e4s/GL33LdzG70EdJl+\nnr4xYoCuwY86zXNTFdKKtW4HQk9+QnauYWksITL0Jej12V3ZpeG/88b6DkVv0qsL\nuF0IihggFwpodPXmrHgUnCh6VJpsljnNMaS2Iq4lAoGAJCzvDUJXDXNvcCFWMHrH\nEpFw3LwNlB3VuXJoc5QFHX/tZvzOxMldfXzo7widthfy3x4EGqA25DbBKHGfvlwWUqJ\na5IjlN2wXOdjOZ9Ks+VVc4fA1IcHqqCyvcSwfe89gYOCpTIBPhUw2H8T/47cP2GI\nwJEGfVeDPaVLjfdydfwpnQ8=\n-----END PRIVATE KEY-----\n",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDIFe3wqbC6KlY8\nOodNRQPNEPlZiXzJyeVfS7lT/H5Gt8G9c1f507Lu24P+qZmx4ApNr5LyiHgbLYTq\nJLfCsLKIHEFP3PTSkJKG+Y+hjVZIKlZvIhe2j27J3LHeANg55FHM59lXO7U2IPxK\nY75HxBo9pimfBukDX6XiNt7D95irpCr56Nxdj98B4IkNAvoOWTozCh3hnRNT72Yf\nuKLl+8g5dOj4aS0C2QHH1bT2mlG+I1YJeDkZNAPfqGp1mG4yUqcoSbdfW1UQqhgw\nkPpdJAGTVXac3u8PXc5LdM42iUpKyEiA25ppv9+oE6uhi+2LjnFunUx5Fo4q54EW\ncKHQLGp7AgMBAAECggEAA8/LIyEQcVN6JhaVWkb8zgzLO0XvvyZd/MVECBIQ08cP\nZU0LuYIrb/p1lsXjXCyg9Z7pJT6tTxM8a3t8lrRoCkjDg8J5VYOUjwa1EkZPhPtt\nfxt+qSctXKIcL1cDx4KOfmFSViOYjanuNHqW9uYI+/Cs7U8j5EEPt3IFJ2WRnn9u\n/wezuMS9medFO0ZT8q5tjIH8kq5qQ2MKYHW/CSD1UWNDIgv+YCaC7tYBheiF4dj7\nBpUfqfGNNOUphfYDjKen//5UoJuOxRl/zvxVap3P+/O7bEAsziWw8/HX5J6dNXi9\n18BiZwgtJqNcaimYYYh5BRGJYUCknHVTj7/BpRmAsQKBgQDzBvHJHjp/RJ0M9riU\ntp2hladFuNL7yFk5nSBNqIvP12sAZnyV63U2D0XVTg35FFJBtry+Az9nWW2E28Sm\npY9iQyx6IZ0x7EzmAvMAk10jyv7DXElssnizhapbLjyjre3pwJys7POGSHUFtEYO\nMomVCYf987TXQGSBddH3jX3N8QKBgQDSxCyKYpvvwS+RTNIXN9+jFdfou89U/0XY\nIjK7yeUqPaBodJOduc85CrIK8NFI5r5X+bYznQlkjsQxIpXae2Tqip8CM1mWWH46\nLZaC+WcxFF3MyLbrloN7bIj4bCfHGE0HZxtSFGnjtxHFS0jWMmXWPCo7ZHeUcpKT\n9ngJH7EDKwKBgQCgufQIbfyEFQ3E+BsFB21i40W4X87xhAQ2jUtC8PheYfq7TgyR\nXiKruRgXRUMKez0XhtJ23FD/ee5rkqkRCae1dfWhZD/BN6V37XVm6Q8NUACDlbJd\nt/8Jw5nyKbcjDTGuiZtU5nT8V0lFl39JfnTtY1tUQexU+5o84H4XubT9EQKBgEpV\nmgfso2a50dcDKw25TQytxYp1wrgNmEqUNSR6HnL5bTup8e4s/GL33LdzG70EdJl+\nnr4xYoCuwY86zXNTFdKKtW4HQk9+QnauYWksITL0Jej12V3ZpeG/88b6DkVv0qsL\nuF0IihggFwpodPXmrHgUnCh6VJpsljnNMaS2Iq4lAoGAJCzvDUJXDXNvcCFWMHrH\nEpFw3LwNlB3VuXJoc5QFHX/tZvzOxMldfXzo7Xgfy3x4EGqA25DbBKHGfvlwWUqJ\na5IjlN2wXOdjOZ9Ks+VVc4fA1IcHqqCyvcSwfe89gYOCpTIBPhUw2H8T/47cP2GI\nwJEGfVeDPaVLjfdydfwpnQ8=\n-----END PRIVATE KEY-----\n",
             "client_email": "tetris-tdr@tetris-tdr.iam.gserviceaccount.com",
             "client_id": "100570209494388998451",
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -447,7 +427,7 @@ class Tetris:
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                # self.uploadStats()
+                self.uploadStats()
                 pygame.quit()
                 quit()
 
@@ -462,14 +442,14 @@ class Tetris:
         # self.total_cleared_lines.append(self.cleared_lines)
 
         plt.clf()
-        plt.title(f'Epoch: {self.epoch}')
+        plt.title(f'Epoch: {self.epoch+1}')
         plt.xlabel('Number of Games')
         plt.ylabel('Reward')
-        plt.plot(self.plot_scores, color="tab:blue")
+        # plt.plot(self.plot_scores, color="tab:blue")
         plt.plot(self.plot_mean_scores, color="tab:red")
         # plt.plot(self.total_cleared_lines, color="tab:green")
         plt.ylim(ymin=0)
-        plt.text(len(self.plot_scores)-1, self.plot_scores[-1], str(self.plot_scores[-1]))
+        # plt.text(len(self.plot_scores)-1, self.plot_scores[-1], str(self.plot_scores[-1]))
         plt.text(len(self.plot_mean_scores)-1, self.plot_mean_scores[-1], str(self.plot_mean_scores[-1]))
         # plt.text(len(self.total_cleared_lines)-1, self.total_cleared_lines[-1], str(self.total_cleared_lines[-1]))
         plt.show(block=False)
