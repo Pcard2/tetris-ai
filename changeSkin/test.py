@@ -2,35 +2,27 @@
 @author: Viet Nguyen <nhviet1009@gmail.com>
 edited by: Pau Cardona
 """
-import argparse
 import torch
 from src.tetris import Tetris
 
 
-def get_args():
-    parser = argparse.ArgumentParser(
-        """Implementation of Deep Q Network to play Tetris""")
-
-    parser.add_argument("--width", type=int, default=10, help="The common width for all images")
-    parser.add_argument("--height", type=int, default=20, help="The common height for all images")
-    parser.add_argument("--block_size", type=int, default=15, help="Size of a block")
-    parser.add_argument("--saved_path", type=str, default="trained_models")
-
-    args = parser.parse_args()
-    return args
+width = 10
+height = 20
+block_size = 15
+saved_path = "trained_models"
 
 
-def test(opt):
+def test():
     if torch.cuda.is_available():
         torch.cuda.manual_seed(123)
     else:
         torch.manual_seed(123)
     if torch.cuda.is_available():
-        model = torch.load("{}/tetris".format(opt.saved_path))
+        model = torch.load("{}/tetris".format(saved_path))
     else:
-        model = torch.load("{}/tetris".format(opt.saved_path), map_location=lambda storage, loc: storage)
+        model = torch.load("{}/tetris".format(saved_path), map_location=lambda storage, loc: storage)
     model.eval()
-    env = Tetris(width=opt.width, height=opt.height, block_size=opt.block_size)
+    env = Tetris(width=width, height=height, block_size=block_size)
     env.reset()
     if torch.cuda.is_available():
         model.cuda()
@@ -47,8 +39,8 @@ def test(opt):
         env.render(1)
 
         if done:
+            env.uploadStats()
             env.reset()
 
 if __name__ == "__main__":
-    opt = get_args()
-    test(opt)
+    test()

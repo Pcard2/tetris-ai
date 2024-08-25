@@ -322,21 +322,21 @@ class DeepQNetwork(nn.Module):
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of Deep Q Network to play Tetris""")
-    parser.add_argument("--width", type=int, default=10, help="The common width for all images")
-    parser.add_argument("--height", type=int, default=20, help="The common height for all images")
-    parser.add_argument("--block_size", type=int, default=30, help="Size of a block")
-    parser.add_argument("--batch_size", type=int, default=512, help="The number of images per batch")
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--initial_epsilon", type=float, default=1)
-    parser.add_argument("--final_epsilon", type=float, default=1e-3)
-    parser.add_argument("--num_decay_epochs", type=float, default=2000)
-    parser.add_argument("--num_epochs", type=int, default=3000)
-    parser.add_argument("--save_interval", type=int, default=1000)
-    parser.add_argument("--replay_memory_size", type=int, default=30000,
+    --width", type=int, default=10, help="The common width for all images")
+    --height", type=int, default=20, help="The common height for all images")
+    --block_size", type=int, default=30, help="Size of a block")
+    --batch_size", type=int, default=512, help="The number of images per batch")
+    --lr", type=float, default=1e-3)
+    --gamma", type=float, default=0.99)
+    --initial_epsilon", type=float, default=1)
+    --final_epsilon", type=float, default=1e-3)
+    --num_decay_epochs", type=float, default=2000)
+    --num_epochs", type=int, default=3000)
+    --save_interval", type=int, default=1000)
+    --replay_memory_size", type=int, default=30000,
                         help="Number of epoches between testing phases")
-    parser.add_argument("--log_path", type=str, default="tensorboard")
-    parser.add_argument("--saved_path", type=str, default="Tetris")
+    --log_path", type=str, default="tensorboard")
+    --saved_path", type=str, default="Tetris")
 
     args = parser.parse_args()
     return args

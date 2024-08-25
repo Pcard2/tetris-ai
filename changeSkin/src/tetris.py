@@ -4,7 +4,7 @@
 edited by: Pau Cardona
 """
 
-version = "24-AI"
+version = "25-AI"
 
 import numpy as np
 import torch
@@ -427,7 +427,7 @@ class Tetris:
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.uploadStats()
+                # self.uploadStats()
                 pygame.quit()
                 quit()
 

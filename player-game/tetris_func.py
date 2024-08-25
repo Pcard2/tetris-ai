@@ -8,7 +8,7 @@ from datetime import datetime ## FOR PLAYER GAME
 import gspread ## SPREADSHEETS
 from time import time
 
-version = "24-game"
+version = "25-game"
 
 ### CUSTOMIZE ###
 MOVE_SPEED = 80
@@ -425,4 +425,3 @@ while executant:
     pygame.display.update()
 
 pygame.quit()
-quit()
