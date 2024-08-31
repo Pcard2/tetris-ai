@@ -55,8 +55,6 @@ class Tetris:
         self.height = height
         self.width = width
         self.block_size = block_size
-        self.extra_grid = np.ones((self.height * self.block_size, self.width * int(self.block_size / 2), 3),
-                                   dtype=np.uint8) * np.array([204, 204, 255], dtype=np.uint8)
         self.text_color = (200, 20, 220)
         self.holes = 0
         self.reset()
@@ -96,6 +94,7 @@ class Tetris:
     def reset(self):
         self.grid = [[0] * self.width for _ in range(self.height)]
         self.reward = 0
+        self.combo_count = 0
         self.tetrominoes = 0
         self.points = 0
         self.cleared_lines = 0
@@ -351,9 +350,8 @@ class Tetris:
 
     def scoring(self, lines_cleared):
         reward = 0
-        combo_count = 0
         if lines_cleared > 0:
-            combo_count += 1
+            self.combo_count += 1
             match lines_cleared:
                 case 1: # Single
                     self.points += 100
@@ -371,12 +369,12 @@ class Tetris:
                     self.stats["points_history"].append("4LINES") ## STAT
                     self.points += 800
                     reward += 8
-            if combo_count > 1:
+            if self.combo_count > 1:
                 self.points *= 1.5
-                combo_count += 1
+                self.combo_count  += 1
         else:
-            combo_count = 1
-        score = combo_count + reward * self.width
+            self.combo_count = 0
+        score = 1 + self.combo_count * reward * self.width
         return score
 
     def uploadStats(self):
@@ -444,7 +442,7 @@ class Tetris:
         plt.clf()
         plt.title(f'Epoch: {self.epoch+1}')
         plt.xlabel('Number of Games')
-        plt.ylabel('Reward')
+        plt.ylabel('Median reward')
         # plt.plot(self.plot_scores, color="tab:blue")
         plt.plot(self.plot_mean_scores, color="tab:red")
         # plt.plot(self.total_cleared_lines, color="tab:green")

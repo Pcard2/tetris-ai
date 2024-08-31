@@ -8,7 +8,7 @@ from datetime import datetime ## FOR PLAYER GAME
 import gspread ## SPREADSHEETS
 from time import time
 
-version = "25-game"
+version = "26-game"
 
 ### CUSTOMIZE ###
 MOVE_SPEED = 80
@@ -246,7 +246,7 @@ def uploadStats(stats):
     for a in stats:
         stats_list.append(str(stats[a]))
         
-    wks.update('A'+str(i), [stats_list])
+    wks.update('A'+str(i), [stats_list], value_input_option='RAW')
     print("[DEBUG] SAVED STATS!")
 
 ###################################################################
@@ -272,6 +272,7 @@ stats = {
     "controlHistory": [],
     "totalPieces": 0,
     "pieceHistory": [],
+    "real": "TRUE",
 }
 movement = {"up": False, "left": False, "down": False, "right": False}
 movementDelay = {"left": 0, "down": 0, "right": 0}
@@ -398,6 +399,11 @@ while executant:
         ########################################
         
         drawShape(grid, currentShape, currentRotation, xp, yp)
+        # # # drawShape(grid, tetrominos[0], 1, 1, 18)
+        # # # drawShape(grid, tetrominos[6], 2, 5, 18)
+        # # # drawShape(grid, tetrominos[1], 0, 4, 17)
+        # # # drawShape(grid, tetrominos[3], 1, 7, 18)
+        # # # drawShape(grid, tetrominos[2], 1, 4, 5)
 
         if changePiece:
             for i in grid[0]:
