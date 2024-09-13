@@ -35,11 +35,12 @@ def test():
         predictions = model(next_states)[:, 0]
         index = torch.argmax(predictions).item()
         action = next_actions[index]
-        _, done = env.step(action, 1)
+        reward, done = env.step(action, 1)
         env.render(1)
 
         if done:
-            env.uploadStats()
+            if reward >= 0:
+                env.uploadStats()
             env.reset()
 
 if __name__ == "__main__":

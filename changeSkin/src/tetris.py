@@ -13,6 +13,7 @@ import pygame
 import matplotlib.pyplot as plt
 import gspread
 from time import time
+from quantiphy import Quantity
 
 plt.ion()
 plt.style.use('ggplot')
@@ -66,7 +67,7 @@ class Tetris:
 
         self.points = 0
         pygame.init()
-        xs, ys = 288, 388
+        xs, ys = 328, 388
         self.window = pygame.display.set_mode((xs, ys), pygame.SRCALPHA)
         pygame.display.set_caption("Tetris game")
 
@@ -276,9 +277,11 @@ class Tetris:
                 x_grid, y_grid = (self.size + self.spacing) * x, (self.size + self.spacing) * y # defines the positions of the grid blocks
                 pygame.draw.rect(self.window, color, (x_grid, y_grid, self.size, self.size)) #Rect((left, top), (width, height))
     
+    
+
     def drawPoints(self):
         superf_text = self.font.render("Score", True, "white")
-        superf_points = self.font.render(f'{int(self.points)}', True, "white")
+        superf_points = self.font.render(str(Quantity(int(self.points))), True, "white")
         rect_text = superf_text.get_rect()
         rect_points = superf_points.get_rect()
         rect_text.centerx = 228
@@ -324,7 +327,7 @@ class Tetris:
     def drawInfo(self, epoch):
         superf_text1 = self.small_font.render(f"# Games: {epoch}", True, "white")
         superf_text2 = self.small_font.render(f"Lines: {self.cleared_lines}", True, "white")
-        superf_text3 = self.small_font.render(f"Hi-score: {self.hi_score}", True, "white")
+        superf_text3 = self.small_font.render(f"Hi-score: {str(Quantity(int(self.hi_score)))}", True, "white")
         rect_text1 = superf_text1.get_rect()
         rect_text1.x = 178
         rect_text1.centery = 275
@@ -350,30 +353,32 @@ class Tetris:
 
     def scoring(self, lines_cleared):
         reward = 0
+        actionPoints = 0
         if lines_cleared > 0:
             self.combo_count += 1
             match lines_cleared:
                 case 1: # Single
-                    self.points += 100
                     self.stats["points_history"].append("1LINE") ## STAT
+                    actionPoints += 100
                     reward += 1
                 case 2: # Double
                     self.stats["points_history"].append("2LINES") ## STAT
-                    self.points += 200
+                    actionPoints += 200
                     reward += 2
                 case 3: # Triple
                     self.stats["points_history"].append("3LINES") ## STAT
-                    self.points += 400
+                    actionPoints += 400
                     reward += 4
                 case 4: # Tetris
                     self.stats["points_history"].append("4LINES") ## STAT
-                    self.points += 800
+                    actionPoints += 800
                     reward += 8
             if self.combo_count > 1:
-                self.points *= 1.5
+                actionPoints *= 1.5
                 self.combo_count  += 1
         else:
             self.combo_count = 0
+        self.points += actionPoints
         score = 1 + self.combo_count * reward * self.width
         return score
 
