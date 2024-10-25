@@ -1,5 +1,6 @@
 # inspired by 
 
+import platform
 from  shapes import *
 import pygame
 from pygame.locals import * # Imports all of the keys that control the game (W,A,S,D...)
@@ -8,7 +9,7 @@ from datetime import datetime ## FOR PLAYER GAME
 import gspread ## SPREADSHEETS
 from time import time
 
-version = "26-game"
+version = "28-game"
 
 ### CUSTOMIZE ###
 MOVE_SPEED = 80
@@ -25,12 +26,14 @@ boxColor = (110,130,212)
 size = 15
 spacing = 2
 
+
 pygame.init()
 window = pygame.display.set_mode((width, height), pygame.SRCALPHA)
 pygame.display.set_caption("Tetris game")
 clock = pygame.time.Clock()
 
 font = pygame.font.SysFont('confortaa', 32)
+smallFont = pygame.font.SysFont('confortaa', 24)
 
 def createGrid(xg,yg):
     global grid
@@ -128,21 +131,32 @@ def drawPaused():
     window.blit(rect_surface, (0, 0))
     window.blit(superf_text, rect_text)
 
+
 def drawDebug():
-    superf_text = font.render(f"{clock.get_fps():.0f}", True, "black")
-    rect_text = superf_text.get_rect()
-    rect_text.centerx = 228
-    rect_text.centery = 300
-    window.blit(superf_text, rect_text)
+    superf_text1 = smallFont.render("'p' - Pausa", True, "white")
+    superf_text2 = smallFont.render("'r' - Reinicia", True, "white")
+    rect_text1 = superf_text1.get_rect()
+    rect_text2 = superf_text2.get_rect()
+    rect_text1.x = 178
+    rect_text1.y = 200
+    rect_text2.x = 178
+    rect_text2.y = 224
+    window.blit(superf_text1, rect_text1)
+    window.blit(superf_text2, rect_text2)
 
 def drawGameOver():
-    superf_text = font.render("GAME OVER", True, "black")
+    superf_text1 = font.render("GAME OVER", True, "white")
+    superf_text2 = smallFont.render("'r' per reiniciar!", True, "white")
     rect_surface = pygame.Surface((width, height), pygame.SRCALPHA)
     rect_surface.fill((255, 80, 80, 100))
-    rect_text = superf_text.get_rect()
-    rect_text.center = width//2, height//2
+    rect_text1 = superf_text1.get_rect()
+    rect_text1.center = width//2, height//2-12
+    rect_text2 = superf_text2.get_rect()
+    rect_text2.center = width//2, height//2+12
+    
     window.blit(rect_surface, (0, 0))
-    window.blit(superf_text, rect_text)
+    window.blit(superf_text1, rect_text1)
+    window.blit(superf_text2, rect_text2)
 
 def replacePos(grid,x,y,val):
     grid[y][x] = val
@@ -254,24 +268,25 @@ def uploadStats(stats):
 xg, yg = 10, 20
 createGrid(xg, yg)
 
+my_system = platform.uname()
 executant = True
 points = 0
 level = 1
 comboCount = 1
-gameTime = time()
+gameTime = time() ## STAT
+pausedTime = 0 ## STAT
+isReset = False ## STAT
 moveTime = 0
 fallTime = 0
 stats = {
     "version": version,
     "dateTime": "",
+    "machine-id": my_system.node,
     "timePlayed": 0,
     "points": 0,
-    "pointsHistory": [],
     "linesCleared": 0,
-    "windowStats": {"gridSize": (xg, yg), "screenSize": (width,height)},
-    "controlHistory": [],
+    "isReset": isReset,
     "totalPieces": 0,
-    "pieceHistory": [],
     "real": "TRUE",
 }
 movement = {"up": False, "left": False, "down": False, "right": False}
@@ -293,16 +308,21 @@ while executant:
             # general player movement
                 if event.type == pygame.KEYDOWN: 
                     if event.key == pygame.K_p:
-                        stats["controlHistory"] += "P" ## CONTROL STAT
+                        # stats["controlHistory"] += "P" ## CONTROL STAT
                         paused = not paused
+                        pausedTime = time() - pausedTime
+                    if event.key == pygame.K_r: ## RESET GAME DEBUG
+                        grid, xp, yp, points, currentRotation, gameOver = resetGame()
+                        gameTime = time() ## STAT
+                        isReset = True
                     
-                
+     
 
     window.fill(bgColor)
     drawPoints(points,font)
     drawNext(font,nextShape)
     drawGrid(grid)
-    # drawDebug()
+    drawDebug()
 
     if not paused and not gameOver:
         fallTime += clock.get_rawtime()
@@ -324,24 +344,29 @@ while executant:
         # general player movement
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_w or event.key == pygame.K_UP:
-                    stats["controlHistory"] += "W" ## CONTROL STAT
                     # rotate_delay["up"] = 0
                     currentRotation += 1
                     if currentRotation > 3:
                         currentRotation = 0
                     while collisionShape(grid,currentShape,currentRotation,xp,yp):
-                        currentRotation -= 1
-                if event.key == pygame.K_r: ## RESET GAME DEBUG
-                    grid, xp, yp, points, currentRotation, gameOver = resetGame()
+                        if not collisionShape(grid,currentShape,currentRotation,xp+1,yp):
+                            xp += 1
+                        elif not collisionShape(grid,currentShape,currentRotation,xp-1,yp):
+                            xp -= 1
+                        else:
+                            currentRotation -=1
                 if event.key == pygame.K_SPACE:
-                    stats["controlHistory"].append("SPACE") ## CONTROL STAT
                     while not collisionShape(grid,currentShape,currentRotation,xp,yp+1):
                         yp += 1
                         points += 2
                     changePiece = True
                 if event.key == pygame.K_p:
-                    stats["controlHistory"] += "P" ## CONTROL STAT
                     paused = not paused
+                    pausedTime = time()
+                if event.key == pygame.K_r: ## RESET GAME DEBUG
+                        grid, xp, yp, points, currentRotation, gameOver = resetGame()
+                        gameTime = time() ## STAT
+                        isReset = True
                 
 
         keys = pygame.key.get_pressed()
@@ -359,7 +384,6 @@ while executant:
             movementDelay["right"] += clock.get_rawtime()
 
         # if rotate_delay["up"] > rotateSpeed:
-        #     stats["controlHistory"] += "W" ## CONTROL STAT
         #     rotate_delay["up"] = 0
         #     currentRotation += 1
         #     if currentRotation > 3:
@@ -373,14 +397,12 @@ while executant:
                 movementDelay[direction] = 0
 
                 if movement['left']:
-                    stats["controlHistory"] += "A" ## CONTROL STAT
                     xp -= 1
                     
                     if collisionShape(grid,currentShape,currentRotation,xp,yp):
                         xp += 1
 
                 if movement['down']:
-                    stats["controlHistory"] += "S" ## CONTROL STAT
                     yp += 1
                     points += 1
                     if collisionShape(grid,currentShape,currentRotation,xp,yp): # if the shape collides in the next
@@ -390,7 +412,6 @@ while executant:
                         
                 
                 if movement['right']:
-                    stats["controlHistory"] += "D" ## CONTROL STAT
                     xp += 1
                     if collisionShape(grid,currentShape,currentRotation,xp,yp):
                         xp -= 1
@@ -410,13 +431,13 @@ while executant:
                 if i > 0:
                     stats["dateTime"] = datetime.now() ## STAT
                     stats["points"] = points ## STAT
-                    stats["timePlayed"] = time() - gameTime ## STAT
+                    stats["timePlayed"] = time() - gameTime - pausedTime ## STAT
+                    stats["isReset"] = isReset
                     uploadStats(stats)
                     print("[DEBUG] GAME OVER")
                     gameOver = True
                     
                     
-            stats["pieceHistory"].append(shapeChar)
             stats["totalPieces"] += 1
             currentShape, shapeChar = nextShape, nextShapeChar
             nextShape, xp, yp, nextShapeChar = newShape()
